@@ -1,0 +1,13 @@
+2019-01-09 17:09:25,584:  METRICS ON REGIONS.
+2019-01-09 17:09:25,594:  ChromA passed regions annotation test.
+2019-01-09 22:20:24,696:  DATASET METRICS.
+2019-01-09 22:20:24,697:  File:/mnt/ceph/users/mgabitto/Chrom-light/datasets/SRR3933581.final.chrM.bam
+2019-01-09 22:20:45,161:  FRIP: 0.194
+2019-01-09 22:20:45,193:  Signal To Noise: 7.533
+2019-01-09 22:20:45,193:  Insert Size Metric (Ratio MonoNuc to Nuc-Free): 1.952
+2019-01-09 22:20:45,193:  Number of Reads (Extrapolated from Chromosome 1): 4e+07
+2019-01-09 22:20:45,193:  File:/mnt/ceph/users/mgabitto/Chrom-light/datasets/SRR3933582.final.chrM.bam
+2019-01-09 22:21:05,659:  FRIP: 0.180
+2019-01-09 22:21:05,699:  Signal To Noise: 7.127
+2019-01-09 22:21:05,699:  Insert Size Metric (Ratio MonoNuc to Nuc-Free): 1.708
+2019-01-09 22:21:05,700:  Number of Reads (Extrapolated from Chromosome 1): 4e+07

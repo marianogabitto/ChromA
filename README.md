@@ -1,2 +1,1 @@
-# ChromA
-Chromatin Accessibility Annotation Tool
+# PeakCalling
