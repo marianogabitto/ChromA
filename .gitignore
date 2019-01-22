@@ -1,3 +1,7 @@
+# PYCHARM FILES
+*.iml
+*.xml
+
 # RESULTS DIRECTORY
 results
 results/
