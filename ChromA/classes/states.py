@@ -1,4 +1,4 @@
-from util.ParamBag import ParamBag
+from ..util.ParamBag import ParamBag
 
 from scipy.special import psi, gammaln
 from scipy.stats import binom

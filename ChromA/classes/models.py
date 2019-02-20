@@ -1,6 +1,6 @@
-from util.HMM import message_passing_multi, message_passing_posterior_state, message_passing_incremental
-from util.ParamBag import ParamBag
-from classes import data_handle, states
+from ..util.HMM import message_passing_multi, message_passing_posterior_state, message_passing_incremental
+from ..util.ParamBag import ParamBag
+from ..classes import data_handle, states
 
 import multiprocessing
 import numpy as np

@@ -1,4 +1,4 @@
-from util.LibFwdBwd import FwdBwdAlg_cpp
+from .LibFwdBwd import FwdBwdAlg_cpp
 
 from scipy.special import psi
 import multiprocessing

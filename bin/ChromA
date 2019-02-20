@@ -1,6 +1,8 @@
-import classes.models as models
-import classes.states as states
-import classes.data_handle as dh
+#!/usr/bin/env python
+
+from ChromA import models
+from ChromA import states
+from ChromA import data_handle as dh
 import numpy as np
 import logging
 import argparse
