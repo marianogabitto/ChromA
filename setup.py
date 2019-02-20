@@ -2,19 +2,21 @@ from setuptools import setup, Extension
 import setuptools
 import os
 
-src_dir=os.path.dirname(os.path.abspath(__file__))
+from distutils.command.install import install
 
-#cpp_args = ['--shared','-fPIC']
-cpp_args = ['-O3']
-core_hmm = Extension('ChromA_HMM',
-                     define_macros=[('MAJOR_VERSION', '1'),
-                                    ('MINOR_VERSION', '0')],
-                     include_dirs=['/usr/local/include',src_dir+'/ChromA/util/eigen'],
-                     libraries=[],
-                     library_dirs=['/usr/local/lib'],
-                     sources=[src_dir+'/ChromA/util/FwdBwdRowMajor.cpp'],
-                     extra_compile_args=cpp_args
-                     )
+
+class CustomInstall(install):
+    # Compile the C++ code
+    def run(self):
+        src_dir=os.path.dirname(os.path.abspath(__file__))
+        src_file=src_dir + '/ChromA/util/FwdBwdRowMajor.cpp'
+        so_file=src_dir + '/ChromA/util/libfwdbwdcpp.so'
+        cmd='g++ {} -o {} --shared -fPIC -DNDEBUG -O3 -I{}'.format(src_file,so_file,src_dir + '/ChromA/util/eigen')
+        print('=============================================================================')
+        print(cmd)
+        os.system(cmd)
+
+        install.run(self)
 # export EIGENPATH=/Users/mgabitto/Desktop/Projects/PeakCalling/PeakCalling/Chrom/util/eigen/
 # g++ FwdBwdRowMajor.cpp -o libfwdbwd.so --shared -fPIC -DNDEBUG -O3 -I$EIGENPATH
 
@@ -24,7 +26,8 @@ setup(
     version='0.0.2',
     #packages=['ChromA'],
     packages=setuptools.find_packages(),
-    package_data={'': ['data/*','data/promoters/*','data/blacklisted/*']},
+    # note that we need to explicitly list the .so file so it gets copied
+    package_data={'': ['data/*','data/promoters/*','data/blacklisted/*','util/*.so']}, 
     url='',
     license='',
     author='Mariano Gabitto',
@@ -41,5 +44,6 @@ setup(
         'setproctitle',
         'psutil'
     ],
-    ext_modules = [core_hmm]
+    cmdclass={'install': CustomInstall}
+    # ext_modules = [core_hmm]
 )
