@@ -61,6 +61,15 @@ if __name__ == '__main__':
 
     # #############################################
     # #############################################
+    # COUNT ROUTINE
+    if options.count is True:
+        dh.count_in_peaks(barcodes, fragments, peaks, species)
+
+    # #############################################
+    # #############################################
+
+    # #############################################
+    # #############################################
     # BUILDING PARAMETERS SINGLE EXPERIMENT
     for _ in np.arange(len(options.filename)):
         logger.info("Processing File:{}".format(options.filename[_]))

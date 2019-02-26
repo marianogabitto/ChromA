@@ -92,9 +92,6 @@ class BayesianHsmmExperimentMultiProcessing:
         # ##################################
         # Defining Ray Environment
         processors = multiprocessing.cpu_count()
-        if processors < 22:
-            self.logger.info("Parallel Computations Might Fail due to limited number of processors ({}).".
-                             format(processors))
         memo = int(5e9)
         self.logger.info("Running with {0} processors. Size of Plasma Storage {1}".format(int(processors), memo))
         if not ray.is_initialized():
