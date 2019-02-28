@@ -3,6 +3,10 @@ results
 results/
 results/*
 
+# IDEA Pycharm Omit
+.idea/*
+.idea
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

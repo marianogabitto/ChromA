@@ -31,7 +31,7 @@ def FwdBwdAlg_cpp(initPi, transPi, SoftEv, order='C'):
 
 
 path = os.getcwd()
-libpath = path + '/util/'
+libpath = path + '/ChromA/util/'
 libfilename = 'libfwdbwdcpp.so'
 hasEigenLibReady = True
 
@@ -49,4 +49,5 @@ try:
 
 except OSError:
     # No compiled C++ library exists
+    print("Failed to Load Cpp Core")
     hasEigenLibReady = False

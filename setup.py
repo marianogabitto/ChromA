@@ -3,11 +3,32 @@ import setuptools
 import os
 
 from distutils.command.install import install
+from distutils.command.build_ext import build_ext
 
+
+#############################################
+# HOW TO COMPILE THE CPP CORE
+# export EIGENPATH=/Users/mgabitto/Desktop/Projects/PeakCalling/PeakCalling/Chrom/util/eigen/
+# g++ FwdBwdRowMajor.cpp -o libfwdbwd.so --shared -fPIC -DNDEBUG -O3 -I$EIGENPATH
+#############################################
+
+
+def _post_install(_):
+    src_dir = os.path.dirname(os.path.abspath(__file__))
+    src_file = src_dir + '/ChromA/util/FwdBwdRowMajor.cpp'
+    so_file = src_dir + '/ChromA/util/libfwdbwdcpp.so'
+    cmd = 'g++ {} -o {} --shared -fPIC -DNDEBUG -O3 -I{}'.format(src_file, so_file, src_dir + '/ChromA/util/eigen')
+    print('=============================================================================')
+    print(cmd)
+    print('=============================================================================')
+    os.system(cmd)
+    os.system("cp {} {}".format(so_file, src_dir + '/ChromA/data/libfwdbwdcpp.so'))
+    print(os.system("ls {}".format(src_dir + '/ChromA/util/')))
 
 class CustomInstall(install):
     # Compile the C++ code
     def run(self):
+        # install.run(self)
         src_dir=os.path.dirname(os.path.abspath(__file__))
         src_file=src_dir + '/ChromA/util/FwdBwdRowMajor.cpp'
         so_file=src_dir + '/ChromA/util/libfwdbwdcpp.so'
@@ -15,19 +36,20 @@ class CustomInstall(install):
         print('=============================================================================')
         print(cmd)
         os.system(cmd)
-
+        os.system("pwd")
+        print(os.system("ls"))
         install.run(self)
-# export EIGENPATH=/Users/mgabitto/Desktop/Projects/PeakCalling/PeakCalling/Chrom/util/eigen/
-# g++ FwdBwdRowMajor.cpp -o libfwdbwd.so --shared -fPIC -DNDEBUG -O3 -I$EIGENPATH
-
+        """
+        self.execute(_post_install, " ", msg="Compiling C++ Core")
+        """
 
 setup(
     name='ChromA',
-    version='0.0.2',
-    #packages=['ChromA'],
+    version='0.0.3',
     packages=setuptools.find_packages(),
     # note that we need to explicitly list the .so file so it gets copied
-    package_data={'': ['data/*','data/promoters/*','data/blacklisted/*','util/*.so']}, 
+    package_data={'': ['test/*', 'data/*', 'data/promoters/*', 'data/blacklisted/*',
+                       'util/libfwdbwdcpp.so', 'util/*.so']},
     url='',
     license='',
     author='Mariano Gabitto',
@@ -42,8 +64,9 @@ setup(
         'ray',
         'scipy',
         'setproctitle',
-        'psutil'
+        'psutil',
+        'nose'
     ],
+    test_suite='nose.collector',
     cmdclass={'install': CustomInstall}
-    # ext_modules = [core_hmm]
 )
