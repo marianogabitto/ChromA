@@ -51,3 +51,4 @@ except OSError:
     # No compiled C++ library exists
     print("Failed to Load Cpp Core")
     hasEigenLibReady = False
+    raise
