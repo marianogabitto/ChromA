@@ -92,17 +92,13 @@ class BayesianHsmmExperimentMultiProcessing:
         # ##################################
         # Defining Ray Environment
         processors = multiprocessing.cpu_count()
-<<<<<<< HEAD:classes/models.py
-        memo = int(5e9)
-=======
         if processors > 22:
             memo = int(80e9)
         else:
             memo = int(10e9)
->>>>>>> jfm:ChromA/classes/models.py
         self.logger.info("Running with {0} processors. Size of Plasma Storage {1}".format(int(processors), memo))
         if not ray.is_initialized():
-            ray.init(num_cpus=int(processors), object_store_memory=memo)
+            ray.init(num_cpus=int(processors), object_store_memory=memo, include_ui=False)
 
         # ##################################
         # Running Regions
