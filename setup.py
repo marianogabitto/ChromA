@@ -2,9 +2,12 @@ from setuptools import setup, Extension
 import setuptools
 import os
 
-from distutils.command.install import install
-from distutils.command.build_ext import build_ext
+#from distutils.command.install import install
+#from distutils.command.build_ext import build_ext
 
+from setuptools.command.install import install
+from setuptools.command.develop import develop
+from setuptools.command.egg_info import egg_info
 
 #############################################
 # HOW TO COMPILE THE CPP CORE
@@ -25,10 +28,25 @@ def _post_install(_):
     os.system("cp {} {}".format(so_file, src_dir + '/ChromA/data/libfwdbwdcpp.so'))
     print(os.system("ls {}".format(src_dir + '/ChromA/util/')))
 
+class CustomInstallCommand(install):
+    def run(self):
+        install.run(self)
+        self.execute(_post_install, " ", msg="Compiling C++ Core")
+
+class CustomDevelopCommand(develop):
+    def run(self):
+        develop.run(self)
+        self.execute(_post_install, " ", msg="Compiling C++ Core")
+
+class CustomEggInfoCommand(egg_info):
+    def run(self):
+        egg_info.run(self)
+        self.execute(_post_install, " ", msg="Compiling C++ Core")
+
 class CustomInstall(install):
     # Compile the C++ code
     def run(self):
-        # install.run(self)
+        install.run(self)
         src_dir=os.path.dirname(os.path.abspath(__file__))
         src_file=src_dir + '/ChromA/util/FwdBwdRowMajor.cpp'
         so_file=src_dir + '/ChromA/util/libfwdbwdcpp.so'
@@ -38,7 +56,7 @@ class CustomInstall(install):
         os.system(cmd)
         os.system("pwd")
         print(os.system("ls"))
-        install.run(self)
+        # install.run(self)
         """
         self.execute(_post_install, " ", msg="Compiling C++ Core")
         """
@@ -68,5 +86,9 @@ setup(
         'nose'
     ],
     test_suite='nose.collector',
-    cmdclass={'install': CustomInstall}
+    cmdclass={
+        'install': CustomInstallCommand,
+        'develop': CustomDevelopCommand,
+        'egg_info': CustomEggInfoCommand
+    }
 )

@@ -35,6 +35,7 @@ libpath = path + '/ChromA/util/'
 libfilename = 'libfwdbwdcpp.so'
 hasEigenLibReady = True
 
+print('#################################', libpath, libfilename)
 try:
     lib = ctypes.cdll.LoadLibrary(os.path.join(libpath, libfilename))
     lib.FwdBwdAlg.restype = None
