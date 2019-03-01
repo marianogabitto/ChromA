@@ -30,8 +30,7 @@ def FwdBwdAlg_cpp(initPi, transPi, SoftEv, order='C'):
     return resp, resp_pair, marg_pr_seq
 
 
-path = os.getcwd()
-libpath = path + '/ChromA/util/'
+libpath = os.path.dirname(os.path.abspath(__file__))
 libfilename = 'libfwdbwdcpp.so'
 hasEigenLibReady = True
 
