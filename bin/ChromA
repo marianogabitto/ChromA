@@ -7,7 +7,7 @@ import numpy as np
 import logging
 import argparse
 import os
-__version__ = '0.0.3'
+__version__ = '0.0.5'
 
 
 if __name__ == '__main__':
@@ -47,15 +47,6 @@ if __name__ == '__main__':
 
     # VALIDATE INPUTS
     dh.validate_inputs(options.filename)
-    # #############################################
-    # #############################################
-
-    # #############################################
-    # #############################################
-    # COUNT ROUTINE
-    if options.count is True:
-        dh.count_in_peaks(barcodes, fragments, peaks, species)
-
     # #############################################
     # #############################################
 
