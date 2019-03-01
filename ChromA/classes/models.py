@@ -93,9 +93,15 @@ class BayesianHsmmExperimentMultiProcessing:
         # Defining Ray Environment
         processors = multiprocessing.cpu_count()
         if processors > 22:
-            memo = int(80e9)
+            if ray.utils.get_system_memory() < 80e9:
+                memo = ray.utils.get_system_memory()
+                self.logger.info("Recommended Memory > 80GB".format(memo))
+            else:
+                memo = int(80e9)
         else:
-            memo = int(10e9)
+            self.logger.info("Number of Recommended Processors is > 22".format(int(processors)))
+            memo = ray.utils.get_system_memory()
+
         self.logger.info("Running with {0} processors. Size of Plasma Storage {1}".format(int(processors), memo))
         if not ray.is_initialized():
             ray.init(num_cpus=int(processors), object_store_memory=memo, include_webui=False)

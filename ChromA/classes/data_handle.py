@@ -35,6 +35,13 @@ def human_lens():
     return lens
 
 
+def fly_lens():
+    lens = {'chr2L': 23513712, 'chr2R': 25286936, 'chr3L': 28110227, 'chr3R': 32079331,
+            'chr4': 1348131, 'chrM': 19524, 'chrX': 23542271, 'chrY': 3667352}
+
+    return lens
+
+
 def build_logger(verbose_mode, filename=None, supress=False):
     # Configure Root Logger
     logger = logging.getLogger()
@@ -97,7 +104,8 @@ def validate_inputs(files=None):
                     row = next(reader)
                     assert(row[0] in ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr7', 'chr8', 'chr9', 'chr10',
                                       'chr11', 'chr12', 'chr13', 'chr14', 'chr15', 'chr16', 'chr17', 'chr18', 'chr19',
-                                      'chr20', 'chr21', 'chr22', 'chrX', 'chrY', 'chrM'])
+                                      'chr20', 'chr21', 'chr22', 'chrX', 'chrY', 'chrM', 'chr2L',
+                                      'chr2R', 'chr3L', 'chr3R'])
                     assert(int(row[1]) > 0)
                     assert(int(row[2]) > 0)
 
@@ -158,6 +166,15 @@ def regions_th17(filename=None, species='mouse'):
     # Rab7A: chr3:128, 440, 000 - 128, 540, 000
     # #############################################
 
+    # ############################################
+    # FLY REGIONS
+    # CTCF:     chr3L: 7,329,969 - 7,379,929
+    # Rpl13a:   chr3R: 5,600,000 - 5,650,000
+    # Actb:     chr4: 1,050,000 - 1,100,000
+    # ey:       chr4:   670,000 - 720,000
+    # Ror:      chr2L: 10,215,000 - 10, 265, 000
+    # #############################################
+
     logger = logging.getLogger()
 
     if species == 'mouse':
@@ -182,8 +199,14 @@ def regions_th17(filename=None, species='mouse'):
                         ['chr2', 28570000, 28670000],
                         ['chr6', 371000, 471000],
                         ['chr3', 128440000, 128540000]]
+    elif species == 'fly':
+        regions_list = [['chr3L', 7329969, 7379929],
+                        ['chr3R', 5600000, 5650000],
+                        ['chr4', 1050000, 1100000],
+                        ['chr4', 670000, 720000],
+                        ['chr7', 10215000, 10265000]]
     else:
-        print('Wrong species name: mouse/human')
+        print('Wrong species name: mouse/human/fly')
         regions_list = 1
         quit()
 
@@ -224,6 +247,8 @@ def regions_chr(filename=None, chromosome=None, species='mouse', blacklisted=Tru
         chrom_lens = mouse_lens()
     elif species == 'human':
         chrom_lens = human_lens()
+    elif species == 'fly':
+        chrom_lens = fly_lens()
     else:
         chrom_lens = []
         logger.error('Wrong species name: mouse/human')
@@ -254,14 +279,8 @@ def regions_chr(filename=None, chromosome=None, species='mouse', blacklisted=Tru
     if blacklisted:
         logger.info(chr_ + ": Removing Blacklisted Regions")
         # Reading List of Blacklisted Regions
-        bl_path = os.getcwd()
-        bl = read_bed(bl_path + "/ChromA/data/blacklisted/mm10.blacklist.bed")
-        """
-        bl = []
-        for _ in HTSeq.BED_Reader(
-                bl_path + "/data/blacklisted/mm10.blacklist.bed"):
-            bl.append([_.iv.chrom, _.iv.start, _.iv.end])
-        """
+        chroma_root = os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+        bl = read_bed(chroma_root + "/data/blacklisted/mm10.blacklist.bed")
         # Removing Blacklisted Regions
         blacklist_reads(out_data, bl, chrom_l, start_l, length)
 
@@ -339,7 +358,7 @@ def chr_reads(files, chrom, start, end, insert_size=False):
     if insert_size:
         return out, insert_size_calc, number_reads
     else:
-        return out # np.convolve(out[:, 0], np.ones((100, )) / 100, mode='same')[:, None]
+        return out  # np.convolve(out[:, 0], np.ones((100, )) / 100, mode='same')[:, None]
 
 
 def get_chunks(cov, chro, region_size=200000):
@@ -601,13 +620,27 @@ def blacklist_reads(data, bl, chrom, start, length):
 def frip_sn(annot, spec='mouse', file=None):
 
     # Validate Species
+    chroma_root = os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+
     if spec == 'mouse':
         chrom_lens = mouse_lens()
-        prom = "ChromA/data/promoters/prom_mm10_genes.bed"
-    else:
+        prom = chroma_root + "/data/promoters/prom_mm10_genes.bed"
+        reference_chromosome = 'chr1'
+    elif spec == 'fly':
+        chrom_lens = fly_lens()
+        prom = chroma_root + "/data/promoters/prom_dmel6_genes.bed"
+        reference_chromosome = 'chr3R'
+    elif spec == 'human':
         chrom_lens = human_lens()
-        prom = "ChromA/data/promoters/prom_hg19_genes.bed"
-    approx_coef = chrom_lens['chr1']/np.sum(list(chrom_lens.values()))
+        prom = chroma_root + "/data/promoters/prom_hg19_genes.bed"
+        reference_chromosome = 'chr1'
+    else:
+        chrom_lens = []
+        prom = []
+        reference_chromosome = []
+        raise AssertionError
+
+    approx_coef = chrom_lens[reference_chromosome]/np.sum(list(chrom_lens.values()))
 
     # Validate File
     if file is None:
@@ -615,8 +648,9 @@ def frip_sn(annot, spec='mouse', file=None):
     elif not os.path.isfile(file[0]):
         return 0, 0
 
-    # Collect Reads Chromosome 1
-    reads, ins, reads_r = chr_reads(file, 'chr1', 1, chrom_lens['chr1'], insert_size=True)
+    # Collect Reads Reference Chromosome
+    reads, ins, reads_r = chr_reads(file, reference_chromosome, 1,
+                                    chrom_lens[reference_chromosome], insert_size=True)
 
     # Count Fraction of Tn5 Binding Events in Peaks
     frip_count = 0.
@@ -631,7 +665,7 @@ def frip_sn(annot, spec='mouse', file=None):
     prom_length = np.abs(bed_peaks[0][2] - bed_peaks[0][1])
     read_prom = np.zeros(prom_length)
     for b_ in bed_peaks:
-        if b_[0] == 'chr1':
+        if b_[0] == reference_chromosome:
             read_prom += reads[int(b_[1]):int(b_[2])][:, 0]
     idx = read_prom.argmax()
     if idx < 200 or idx > 3800:

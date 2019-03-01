@@ -25,7 +25,8 @@ if __name__ == '__main__':
                         default=20, help='Number of iterations to fit the algorithm (default = 10, optional)')
 
     parser.add_argument('-spec', '--species', action='store', dest='species', type=str, required=False,
-                        default='mouse', help='Genome Species mouse, human (default = mouse, optional)')
+                        default='mouse', choices=['mouse', 'human', 'fly'],
+                        help='Genome Species.(default = mouse, optional)')
     parser.add_argument('-bl', '--blacklisted', action='store', dest='blacklisted', type=bool, required=False,
                         default=True, help='Remove Blacklisted peaks. (default is True).')
 
