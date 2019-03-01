@@ -255,7 +255,7 @@ def regions_chr(filename=None, chromosome=None, species='mouse', blacklisted=Tru
         logger.info(chr_ + ": Removing Blacklisted Regions")
         # Reading List of Blacklisted Regions
         bl_path = os.getcwd()
-        bl = read_bed(bl_path + "/data/blacklisted/mm10.blacklist.bed")
+        bl = read_bed(bl_path + "/ChromA/data/blacklisted/mm10.blacklist.bed")
         """
         bl = []
         for _ in HTSeq.BED_Reader(
@@ -603,10 +603,10 @@ def frip_sn(annot, spec='mouse', file=None):
     # Validate Species
     if spec == 'mouse':
         chrom_lens = mouse_lens()
-        prom = "data/promoters/prom_mm10_genes.bed"
+        prom = "ChromA/data/promoters/prom_mm10_genes.bed"
     else:
         chrom_lens = human_lens()
-        prom = "data/promoters/prom_hg19_genes.bed"
+        prom = "ChromA/data/promoters/prom_hg19_genes.bed"
     approx_coef = chrom_lens['chr1']/np.sum(list(chrom_lens.values()))
 
     # Validate File

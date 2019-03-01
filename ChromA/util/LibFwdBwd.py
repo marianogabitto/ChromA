@@ -30,11 +30,11 @@ def FwdBwdAlg_cpp(initPi, transPi, SoftEv, order='C'):
     return resp, resp_pair, marg_pr_seq
 
 
-path = os.getcwd()
-libpath = path + '/util/'
+libpath = os.path.dirname(os.path.abspath(__file__))
 libfilename = 'libfwdbwdcpp.so'
 hasEigenLibReady = True
 
+print('#################################', libpath, libfilename)
 try:
     lib = ctypes.cdll.LoadLibrary(os.path.join(libpath, libfilename))
     lib.FwdBwdAlg.restype = None
@@ -49,4 +49,5 @@ try:
 
 except OSError:
     # No compiled C++ library exists
+    print("Failed to Load Cpp Core")
     hasEigenLibReady = False
