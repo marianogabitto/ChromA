@@ -8,7 +8,6 @@ import csv
 import os
 
 import matplotlib.pyplot as plt
-plt.switch_backend("Agg")
 from matplotlib.backends.backend_pdf import PdfPages
 
 

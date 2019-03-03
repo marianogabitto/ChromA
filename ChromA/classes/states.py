@@ -1,4 +1,4 @@
-from ..util.ParamBag import ParamBag
+from ..util.ParamStorage import ParamStorage
 
 from scipy.special import psi, gammaln
 from scipy.stats import binom
@@ -145,7 +145,7 @@ class NegativeBinomialGEO:
         self.block_prior = np.zeros((r, r))
 
         # Define the prior bag of parameters
-        self.prior = ParamBag()
+        self.prior = ParamStorage()
         if self.update is True:
             self.prior.setField('p', s_count, dims=None)
             self.prior.setField('f', f_count, dims=None)
@@ -153,7 +153,7 @@ class NegativeBinomialGEO:
         self.prior.setField('emit1', cut1, dims=None)
 
         # Define the posterior bag of parameters
-        self.posterior = ParamBag()
+        self.posterior = ParamStorage()
         if self.update is True:
             self.posterior.setField('p', s_count, dims=None)
             self.posterior.setField('f', f_count, dims=None)
@@ -412,13 +412,13 @@ class TopStateNegativeBinomial:
         self.block_prior = np.zeros((r, r))
 
         # Define the prior bag of parameters States
-        self.prior = ParamBag(K=self.k)
+        self.prior = ParamStorage(K=self.k)
         if self.update is True:
             self.prior.setField('p', s_count, dims=None)
             self.prior.setField('f', f_count, dims=None)
 
         # Define the posterior bag of parameters
-        self.posterior = ParamBag(K=self.k)
+        self.posterior = ParamStorage(K=self.k)
         if self.update is True:
             self.posterior.setField('p', s_count, dims=None)
             self.posterior.setField('f', f_count, dims=None)
@@ -563,7 +563,7 @@ class NegativeBinomialGEOBin:
         self.block_prior = np.zeros((r, r))
 
         # Define the prior bag of parameters
-        self.prior = ParamBag()
+        self.prior = ParamStorage()
         if self.update is True:
             self.prior.setField('p', s_count, dims=None)
             self.prior.setField('f', f_count, dims=None)
@@ -571,7 +571,7 @@ class NegativeBinomialGEOBin:
         self.prior.setField('emit1', cut1, dims=None)
 
         # Define the posterior bag of parameters
-        self.posterior = ParamBag()
+        self.posterior = ParamStorage()
         if self.update is True:
             self.posterior.setField('p', s_count, dims=None)
             self.posterior.setField('f', f_count, dims=None)

@@ -1,5 +1,5 @@
 from ..util.HMM import message_passing_multi, message_passing_posterior_state, message_passing_incremental
-from ..util.ParamBag import ParamBag
+from ..util.ParamStorage import ParamStorage
 from ..classes import data_handle, states
 
 import multiprocessing
@@ -9,10 +9,7 @@ import copy
 import ray
 import os
 
-# import matplotlib
-# matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
-plt.switch_backend("Agg")
 eps = 1e-9
 
 
@@ -71,12 +68,12 @@ class BayesianHsmmExperimentMultiProcessing:
                 idx += s.r
 
         # Prior Allocation
-        self.prior = ParamBag(K=self.k)
+        self.prior = ParamStorage(K=self.k)
         self.prior.setField('tmat', tmat_prior, dims=('K', 'K'))
         self.prior.setField('pi', pi_prior, dims='K')
 
         # Posterior Allocation
-        self.posterior = ParamBag(K=self.k)
+        self.posterior = ParamStorage(K=self.k)
         self.posterior.setField('tmat', tmat_prior, dims=('K', 'K'))
         self.posterior.setField('pi', pi_prior, dims='K')
 
@@ -305,7 +302,7 @@ class Trainer(object):
         # Formatting Prior, Posterior
         self.prior = prior
         if self.n_exp == 1:
-            self.posterior = ParamBag(K=self.k)
+            self.posterior = ParamStorage(K=self.k)
             if tmat is None:
                 tmat = self.prior.tmat
             self.posterior.setField('tmat', tmat, dims=('K', 'K'))
@@ -313,7 +310,7 @@ class Trainer(object):
                 pi = self.prior.pi
             self.posterior.setField('pi', pi, dims='K')
         elif self.n_exp > 1:
-            self.posterior = ParamBag(K=self.k, N=self.data.shape[0])
+            self.posterior = ParamStorage(K=self.k, N=self.data.shape[0])
             self.posterior.setField('tmat', self.prior.tmat, dims=('K', 'K'))
             self.posterior.setField('pi', self.prior.pi, dims='K')
             self.posterior.setField('s_s', np.zeros((self.data.shape[0], self.k)), dims=('N', 'K'))
