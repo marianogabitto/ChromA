@@ -47,7 +47,7 @@ if __name__ == '__main__':
     logger = logging.getLogger()
 
     # VALIDATE INPUTS
-    dh.validate_inputs(options.filename)
+    dh.validate_inputs(files=options.filename, species=options.species)
     # #############################################
     # #############################################
 

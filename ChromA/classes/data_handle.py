@@ -80,7 +80,7 @@ def build_logger(verbose_mode, filename=None, supress=False):
     logger_metric.addHandler(mhandler)
 
 
-def validate_inputs(files=None):
+def validate_inputs(files=None, species=None):
 
     logger = logging.getLogger()
     logger.info("Validating Inputs")
@@ -93,7 +93,10 @@ def validate_inputs(files=None):
             raise SystemExit
         if f_[-3:] == 'bam':
             try:
-                chr_reads([f_], 'chr1', 3e7, 3e7 + 100)
+                if species == 'fly':
+                    chr_reads([f_], 'chr3R', 5624047, 5625400)
+                else:
+                    chr_reads([f_], 'chr1', 3e7, 3e7 + 100)
             except:
                 logging.error("ERROR:Could not read file as BAM format. {}".format(f_))
                 raise SystemExit
@@ -204,7 +207,7 @@ def regions_th17(filename=None, species='mouse'):
                         ['chr3R', 5600000, 5650000],
                         ['chr4', 1050000, 1100000],
                         ['chr4', 670000, 720000],
-                        ['chr7', 10215000, 10265000]]
+                        ['chr2L', 10215000, 10265000]]
     else:
         print('Wrong species name: mouse/human/fly')
         regions_list = 1
@@ -531,9 +534,13 @@ def write_bed(filename, data, start=None, end=None, ext=100, merge=500):
         start = np.delete(start, idx + 1)
         chrom = np.delete(chrom, idx + 1)
 
+    assert (chrom.shape[0] == start.shape[0])
+    assert (chrom.shape[0] == end.shape[0])
+    assert (start.shape[0] == end.shape[0])
+
     with open(filename, 'w') as f:
         for i in np.arange(chrom.shape[0]):
-            f.write("chr" + str(int(chrom[i])) + "\t" + str(int(start[i])) + "\t" + str(int(end[i])) + "\n")
+            f.write("chr" + str(chrom[i]) + "\t" + str(int(start[i])) + "\t" + str(int(end[i])) + "\n")
 
 
 def bed_result(filename, data, start, chrom, threshold=0.5):
@@ -543,6 +550,7 @@ def bed_result(filename, data, start, chrom, threshold=0.5):
     out_regions = []
 
     # Loop through datasets
+    chr_l = []
     for l_ in np.arange(n_datasets):
         w_data = data[l_] > threshold
         fst = np.where(w_data & ~ np.insert(w_data, 0, 0)[:-1])[0]
@@ -551,13 +559,15 @@ def bed_result(filename, data, start, chrom, threshold=0.5):
 
         # Format Bed
         num_reg = fst.shape[0]
-        reg = np.zeros([num_reg, 3])
+        reg = np.zeros([num_reg, 2])
         for i_ in np.arange(num_reg):
-            reg[i_, :] = [int(chrom[l_]), start[l_] + fst[i_], start[l_] + lst[i_] + 1]
+            chr_l.append(chrom[l_])
+            reg[i_, :] = [start[l_] + fst[i_], start[l_] + lst[i_] + 1]
         out_regions.append(reg)
 
+    rego = np.concatenate(out_regions)
     # write bed
-    write_bed(filename, np.concatenate(out_regions))
+    write_bed(filename, data=np.array(chr_l), start=rego[:, 0], end=rego[:, 1])
 
     return np.concatenate(out_regions)
 
