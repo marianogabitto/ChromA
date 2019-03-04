@@ -573,11 +573,15 @@ def bed_result(filename, data, start, chrom, threshold=0.5):
             reg[i_, :] = [start[l_] + fst[i_], start[l_] + lst[i_] + 1]
         out_regions.append(reg)
 
-    rego = np.concatenate(out_regions)
-    # write bed
-    write_bed(filename, data=np.array(chr_l), start=rego[:, 0], end=rego[:, 1])
+    if len(out_regions) > 0:
+        reg_out = np.concatenate(out_regions)
+        # write bed
+        write_bed(filename, data=np.array(chr_l), start=reg_out[:, 0], end=reg_out[:, 1])
+    else:
+        print("No regions to write to Bed File.")
+        reg_out = []
 
-    return np.concatenate(out_regions)
+    return reg_out
 
 
 def bed_result_broad_peaks(filename, data, start, chrom, threshold=0.5):

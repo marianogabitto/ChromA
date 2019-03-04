@@ -103,7 +103,7 @@ class BayesianHsmmExperimentMultiProcessing:
                 memo = ray.utils.get_system_memory()
                 self.logger.info("Recommended Memory > 80GB".format(memo))
             else:
-                memo = int(80e9)
+                memo = int(100e9)
         else:
             self.logger.info("Number of Recommended Processors is > 22".format(int(processors)))
             memo = ray.utils.get_system_memory()
@@ -298,14 +298,14 @@ class Trainer(object):
 
         # Getting Next Chromosome Data
         self.n_exp = len(filename)
-        if chr_ > 0:
+        if chr_ == -1:
+            self.logger.info("Regions: Fetching Data")
+            data, length, start, chrom = data_handle.regions_th17(filename=filename, species=species)
+        else:
             chrom_str = "chr" + chr_.__str__()
             self.logger.info(chrom_str + ": Fetching Data")
             data, length, start, chrom = data_handle.regions_chr(filename=filename, chromosome=chrom_str,
                                                                  species=species, blacklisted=blacklisted)
-        else:
-            self.logger.info("Regions: Fetching Data")
-            data, length, start, chrom = data_handle.regions_th17(filename=filename, species=species)
 
         self.data = data
         self.length = length
