@@ -4,7 +4,7 @@ ChromA is a probabilistic model to annotate chromatin regions into accessible or
 
 At the moment, we are building a webpage with extensive documentation. We give a brief introduction here on how to install and run ChromA but contact the authors or open an issue in github if you are encountering errors.
 
-
+# Installation
 ChromA is implemented in Python 3 and can be installed by running:
 > pip install git+https://github.com/marianogabitto/ChromA
 
@@ -46,3 +46,50 @@ We support the following genomes: mouse / human / fly . In case you want a new g
 
 If running ChromA returns an error in which "libfwdbwdcpp.so" is mentioned, this is due to troubles finding the C++ library that performs calculations. Please refer to our troubleshoot section to overcome this issue.
 If running ChromA returns an error in which "worker.py" is mentioned, this could be caused by our parallelization support. Please refer to our troubleshoot section to overcome this issue.
+
+RUNNING CONSENSUS CHROMA: To run Consensus ChromA integrating information from different replicates, integrate information from bulk and single cell or to create a common representation between different populations, please list all the files after the -i command. Be aware that this command will take longer to run.
+> ChromA -i my.sorted1.bam my.sorted2.bam my.tn5binding.tsv -reg True  -sb output.bed -spec mouse
+
+RUNNING CHROMA ON A CLUSTER USING SLURM:To run ChromA on a computer cluster using the slurm scheduler, we create a bash script named run.sh. run.sh has the following structure:
+
+> cat run.sh
+#!/bin/bash
+
+#####################################################################################################
+#The following lines load cuda support and select the python 3 environment in which ChromA is installed
+
+module load gcc/7.3.0
+
+module load cuda/8.0.61
+
+module load cudnn/v6.0-cuda-8.0
+
+source /mnt/home/mgabitto/python_3/bin/activate
+######################################################################################################
+The following lines initialize ray without gpus and then run ChromA
+
+CUDA_VISIBLE_DEVICES=''
+
+ChromA -i my.sorted.bam -sb output.bed -reg True -spec mouse
+######################################################################################################
+
+To run our bash script on the slurm scheduler please run:
+> sbatch -N 1 --exclusive -t 0-10:00:00 run.sh
+
+# CHROMA OUTPUTS:
+ChromA generates 4 files as its output. In general, ChromA minimizes output to the console, logging all the information to different files. After a successful run, you should find the following 4 files:
+
+> ChromA -i my.sorted.bam -sb output.bed -reg True -spec mouse
+
+Within the directory where my.sorted.bam resides:
+my.sorted_insert_size.pdf
+This file creates an insert size distribution graphs for dataset quality control.
+
+Within the directory where the ChromA command is invoked:
+output.bed_allpeaks.bed
+output.bed.log
+output.bed_metrics.log
+
+output.bed_allpeaks.bed is a bed file that contains accessible regions.
+output.bed.log logs all the information of the current run.
+output.bed_metrics.log generates dataset metrics (such as FRIP, SN, #Reads) for quality control.
