@@ -7,7 +7,16 @@ import copy
 import csv
 import os
 
-import matplotlib.pyplot as plt
+import matplotlib
+gui_env = ['Agg', 'TKAgg', 'GTKAgg', 'Qt4Agg', 'WXAgg']
+for gui in gui_env:
+    try:
+        matplotlib.use(gui, warn=False, force=True)
+        from matplotlib import pyplot as plt
+        break
+    except:
+        continue
+
 from matplotlib.backends.backend_pdf import PdfPages
 
 
@@ -683,7 +692,7 @@ def frip_sn(annot, spec='mouse', file=None):
 
     # Calculate Insert Size Distribution
     ins = np.array(ins)
-    ins_calc = (np.sum(ins[(ins < 210) * (ins > 190)]) / np.sum(ins[(ins < 80) * (ins > 60)]))
+    ins_calc = (np.sum(ins[(ins < 210) * (ins > 190)]) / (1 + np.sum(ins[(ins < 80) * (ins > 60)])) )
 
     fig1 = plt.figure()
     plt.hist(ins, 300)

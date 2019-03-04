@@ -9,7 +9,16 @@ import copy
 import ray
 import os
 
-import matplotlib.pyplot as plt
+import matplotlib
+gui_env = ['Agg', 'TKAgg','GTKAgg','Qt4Agg','WXAgg']
+for gui in gui_env:
+    try:
+        matplotlib.use(gui,warn=False, force=True)
+        from matplotlib import pyplot as plt
+        break
+    except:
+        continue
+from matplotlib.backends.backend_pdf import PdfPages
 eps = 1e-9
 
 

@@ -5,10 +5,10 @@ ChromA is a probabilistic model to annotate chromatin regions into accessible or
 At the moment, we are building a webpage with extensive documentation. We give a brief introduction here on how to install and run ChromA but contact the authors or open an issue in github if you are encountering errors.
 
 
-ChromA is implemented in Python 3 and can be install by running:
+ChromA is implemented in Python 3 and can be installed by running:
 > pip install git+https://github.com/marianogabitto/ChromA
 
-ChromA requires the following packages for correct functioning. In principle, the installer should manage their installation but just in case, here is a command that will install all the dependencies.
+ChromA requires the following packages. In principle, the pip installer should manage their installation but just in case, here is a command that will install all the dependencies.
 
 > pip install matplotlib==3.0.2 nose==1.3.7 psutil==5.5.1 pysam==0.15.2 ray==0.6.3 scipy==1.2.0 seaborn==0.9.0 setproctitle==1.1.10 numpy==1.15.4
 
@@ -16,14 +16,15 @@ You can verify the correct installation of ChromA by running:
 
 > ChromA
 
-The output should look like:
-(Python_36) my-computer:~$ ChromA
+The output should look like this:
+>(Python_36) my-computer:~$ ChromA
 usage: ChromA [-h] -i FILENAME [FILENAME ...] -sb SAVE_BED [-reg REGIONS]
-              [-it ITERATIONS] [-spec {mouse,human,fly}] [-bl BLACKLISTED]
+?              [-it ITERATIONS] [-spec {mouse,human,fly}] [-bl BLACKLISTED]
               [-nome NO_METRICS] [-ve VERBOSE_LEVEL] [-v]
-ChromA: error: the following arguments are required: -i/--input, -sb/--saveBedFile
 
-Here, a potential error message can be displayed "Failed to Load Cpp Core" . If this is the case, please refer to troubleshooting ChromA Installation.
+>ChromA: error: the following arguments are required: -i/--input, -sb/--saveBedFile
+
+Omit the error line as it is telling you that no input file was detected. However, a potential error message can be displayed "Failed to Load Cpp Core" . If this is the case, please refer to troubleshooting ChromA Installation.
 
 
 # Get Started:
