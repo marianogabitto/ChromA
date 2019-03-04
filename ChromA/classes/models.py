@@ -148,12 +148,16 @@ class BayesianHsmmExperimentMultiProcessing:
                     self.logger.error('Species and single_chr cannot be None at the same time.')
             elif species == 'mouse':
                 self.species = 'mouse'
-                chr_list = list(np.arange(18, 20))
+                chr_list = list(np.arange(1, 20))
                 self.logger.info('Running on mouse genome. 19 Chroms')
             elif species == 'human':
                 self.species = 'human'
-                chr_list = list(np.arange(19, 22))
+                chr_list = list(np.arange(1, 22))
                 self.logger.info('Running on human genome. 22 Chroms')
+            elif species == 'fly':
+                self.species = 'fly'
+                chr_list = ['2L', '2R','3L', '3R', '4', 'X', 'Y']
+                self.logger.info('Running on fly genome. 7 Chroms')
 
             # Run Training in parallel
             while len(chr_list) > 0:

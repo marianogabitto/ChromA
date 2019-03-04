@@ -45,7 +45,7 @@ class CustomEggInfoCommand(egg_info):
 
 setup(
     name='ChromA',
-    version='0.0.5',
+    version='0.0.7.dev0',
     packages=setuptools.find_packages(),
     # note that we need to explicitly list the .so file so it gets copied
     package_data={'': ['test/*', 'data/*', 'data/promoters/*', 'data/blacklisted/*',

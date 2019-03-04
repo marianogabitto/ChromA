@@ -80,7 +80,6 @@ if __name__ == '__main__':
         logger.info("Saving Bed File")
         path, filename = os.path.split(options.save_bed)
         hsmm.save_bedfile(path=path, name=filename)
-        # hsmm.save_bedfile_individual_states(path=path, name=filename, t_range=True)
         if not options.no_metrics:
             dh.metrics(filename=options.filename, annotations=hsmm.peaks, species=options.species)
     # #############################################
