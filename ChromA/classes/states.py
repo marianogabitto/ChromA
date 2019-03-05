@@ -102,8 +102,8 @@ def build_states(typ='low', filename=None, r=None):
                                   [1, 100]])
 
             top_states = list()
-            top_closed_state = TopStateNegativeBinomial(r=7, p=1e-4, toptmat0=top_tmat0, order=0)
-            top_open_state = TopStateNegativeBinomial(r=5, p=1e-4, toptmat0=top_tmat0, order=1)
+            top_closed_state = TopStateNegativeBinomial(r=5, p=1e-4, toptmat0=top_tmat0, order=0)
+            top_open_state = TopStateNegativeBinomial(r=3, p=1e-4, toptmat0=top_tmat0, order=1)
             top_states.append(top_closed_state)
             top_states.append(top_open_state)
 
