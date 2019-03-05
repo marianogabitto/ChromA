@@ -158,10 +158,14 @@ class BayesianHsmmExperimentMultiProcessing:
             elif species == 'mouse':
                 self.species = 'mouse'
                 chr_list = list(np.arange(1, 20))
+                chr_list.append('X')
+                chr_list.append('Y')
                 self.logger.info('Running on mouse genome. 19 Chroms')
             elif species == 'human':
                 self.species = 'human'
                 chr_list = list(np.arange(1, 22))
+                chr_list.append('X')
+                chr_list.append('Y')
                 self.logger.info('Running on human genome. 22 Chroms')
             elif species == 'fly':
                 self.species = 'fly'
