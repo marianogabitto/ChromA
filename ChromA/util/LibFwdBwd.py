@@ -1,8 +1,10 @@
-import os
-import numpy as np
 import ctypes
+import ctypes.util
+import numpy as np
 from numpy.ctypeslib import ndpointer
-
+import os
+import sys
+import sysconfig
 
 def FwdBwdAlg_cpp(initPi, transPi, SoftEv, order='C'):
 
@@ -29,6 +31,13 @@ def FwdBwdAlg_cpp(initPi, transPi, SoftEv, order='C'):
 
     return resp, resp_pair, marg_pr_seq
 
+def search_paths_for_file(filename, pathlist):
+    for path in pathlist:
+        candidate_file = os.path.join(path, filename)
+        if os.path.isfile(candidate_file):
+            return candidate_file
+
+
 
 libpath = os.path.dirname(os.path.abspath(__file__))
 libfilename = 'libfwdbwdcpp.so'
@@ -36,7 +45,10 @@ hasEigenLibReady = True
 
 print('#################################', libpath, libfilename)
 try:
-    lib = ctypes.cdll.LoadLibrary(os.path.join(libpath, libfilename))
+    #lib = ctypes.cdll.LoadLibrary(os.path.join(libpath, libfilename))
+    library_name = 'libfwdbwdcpp' + sysconfig.get_config_var('EXT_SUFFIX')
+    library_path = search_paths_for_file(library_name, sys.path)
+    lib = ctypes.cdll.LoadLibrary(library_path)
     lib.FwdBwdAlg.restype = None
     lib.FwdBwdAlg.argtypes = \
         [ndpointer(ctypes.c_double),
@@ -51,3 +63,4 @@ except OSError:
     # No compiled C++ library exists
     print("Failed to Load Cpp Core")
     hasEigenLibReady = False
+
