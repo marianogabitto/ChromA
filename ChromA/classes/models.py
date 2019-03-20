@@ -341,12 +341,15 @@ class Trainer(object):
         return self.elbo[:self.elbo_interrupted, :]
 
     def train(self, iterations=20, msg=""):
-        if self.n_exp == 1:
-            self.logger.info(msg + "Running Single File Routine")
-            return self.train_single(iterations=iterations, msg=msg)
-        elif self.n_exp > 1:
-            self.logger.info(msg + "Running Multiple Files Routine")
-            return self.train_multiple(iterations=iterations, msg=msg)
+        if len(self.data) > 0:
+            if self.n_exp == 1:
+                self.logger.info(msg + "Running Single File Routine")
+                return self.train_single(iterations=iterations, msg=msg)
+            elif self.n_exp > 1:
+                self.logger.info(msg + "Running Multiple Files Routine")
+                return self.train_multiple(iterations=iterations, msg=msg)
+        else:
+            return [[], [], [], []], []
 
     def train_single(self, iterations=20, msg=""):
 

@@ -13,6 +13,8 @@ for gui in gui_env:
     try:
         matplotlib.use(gui, warn=False, force=True)
         from matplotlib import pyplot as plt
+        ff = plt.figure()
+        plt.close('all')
         break
     except:
         continue
@@ -283,19 +285,26 @@ def regions_chr(filename=None, chromosome=None, species='mouse', blacklisted=Tru
     chunks = get_chunks(reads, chr_)
 
     # Obtained reads and populate data structure
-    logger.info(chr_ + ": Getting Reads")
-    chrom_l, start_l, length, out_data = reads_from_chunks(chunks, reads, chr_)
-    out_data = np.concatenate(out_data)
+    if len(chunks) > 0:
+        logger.info(chr_ + ": Getting Reads")
+        chrom_l, start_l, length, out_data = reads_from_chunks(chunks, reads, chr_)
+        out_data = np.concatenate(out_data)
 
-    if blacklisted:
-        logger.info(chr_ + ": Removing Blacklisted Regions")
-        # Reading List of Blacklisted Regions
-        chroma_root = os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-        bl = read_bed(chroma_root + "/data/blacklisted/mm10.blacklist.bed")
-        # Removing Blacklisted Regions
-        blacklist_reads(out_data, bl, chrom_l, start_l, length)
+        if blacklisted:
+            logger.info(chr_ + ": Removing Blacklisted Regions")
+            # Reading List of Blacklisted Regions
+            chroma_root = os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+            bl = read_bed(chroma_root + "/data/blacklisted/mm10.blacklist.bed")
+            # Removing Blacklisted Regions
+            blacklist_reads(out_data, bl, chrom_l, start_l, length)
 
-    logger.info(chr_ + ": Data Collected")
+        logger.info(chr_ + ": Data Collected")
+    else:
+        chrom_l = []
+        start_l = []
+        length = []
+        out_data = []
+        logger.info(chr_ + ": No chunks to parse.")
 
     return out_data, length, start_l, chrom_l
 
@@ -379,73 +388,79 @@ def get_chunks(cov, chro, region_size=200000):
 
     # Beginning and End of Chromosome
     idxn0 = np.where(cov > 0)[0]
-    chr_start = idxn0[0]
-    chr_end = idxn0[-1]
+    if len(idxn0) > 0:
+        chr_start = idxn0[0]
+        chr_end = idxn0[-1]
 
-    # Bases with 0-Coverage, intervals of 500 and 50 bp.
-    # idx0 = np.where(cov[chr_start:chr_end] == 0)[0]
-    diff = np.diff(idxn0)
-    i_diff500 = np.where(diff > 500)[0]
-    i_diff50 = np.where(diff > 50)[0]
+        # Bases with 0-Coverage, intervals of 500 and 50 bp.
+        # idx0 = np.where(cov[chr_start:chr_end] == 0)[0]
+        diff = np.diff(idxn0)
+        i_diff500 = np.where(diff > 500)[0]
+        i_diff50 = np.where(diff > 50)[0]
 
-    chunks = []
-    start = chr_start
-    while (chr_end - start) > region_size:
-        flag = 0
-        # Look for chunks using empty 500 bp
-        for i_ in i_diff500[:-1]:
-            if ((idxn0[i_] - start) > region_size) and ((idxn0[i_] - start) < 1.5 * region_size):
-                chunks.append([start, idxn0[i_]])
-                start = idxn0[i_ + 1]
-                flag = 1
-                chunk_type[0] += 1
-                break
-        if flag == 1:
-            continue
-        # Look for chunks using empty 50 bp
-        for i_ in i_diff50[:-1]:
-            if ((idxn0[i_] - start) > region_size) and ((idxn0[i_] - start) < 1.5 * region_size):
-                chunks.append([start, idxn0[i_]])
-                start = idxn0[i_ + 1]
-                flag = 1
-                chunk_type[1] += 1
-                break
-        # Look for chunks using minimum coverage in 50 bp
-        if flag == 0:
-            minimal = np.inf
-            end = start + region_size
-            for r_ in np.arange(start + region_size, start + 1.1 * region_size, 50, dtype=int):
-                if np.sum(cov[r_:r_ + 50]) < minimal:
-                    end = r_
-                    minimal = np.sum(cov[r_:r_ + 50])
-            chunks.append([start, end])
-            start = end + 50
-            chunk_type[2] += 1
+        chunks = []
+        start = chr_start
+        while (chr_end - start) > region_size:
+            flag = 0
+            # Look for chunks using empty 500 bp
+            for i_ in i_diff500[:-1]:
+                if ((idxn0[i_] - start) > region_size) and ((idxn0[i_] - start) < 1.5 * region_size):
+                    chunks.append([start, idxn0[i_]])
+                    start = idxn0[i_ + 1]
+                    flag = 1
+                    chunk_type[0] += 1
+                    break
+            if flag == 1:
+                continue
+            # Look for chunks using empty 50 bp
+            for i_ in i_diff50[:-1]:
+                if ((idxn0[i_] - start) > region_size) and ((idxn0[i_] - start) < 1.5 * region_size):
+                    chunks.append([start, idxn0[i_]])
+                    start = idxn0[i_ + 1]
+                    flag = 1
+                    chunk_type[1] += 1
+                    break
+            # Look for chunks using minimum coverage in 50 bp
+            if flag == 0:
+                minimal = np.inf
+                end = start + region_size
+                for r_ in np.arange(start + region_size, start + 1.1 * region_size, 50, dtype=int):
+                    if np.sum(cov[r_:r_ + 50]) < minimal:
+                        end = r_
+                        minimal = np.sum(cov[r_:r_ + 50])
+                chunks.append([start, end])
+                start = end + 50
+                chunk_type[2] += 1
 
-    # Last Chunk
-    chunks.append([start, chr_end])
-    chunks.sort()
+        # Last Chunk
+        chunks.append([start, chr_end])
+        chunks.sort()
 
-    if logging.getLogger().getEffectiveLevel() == 10:
-        logger = logging.getLogger()
-        avg_length = np.mean(np.array(chunks)[:, 1] - np.array(chunks)[:, 0])
-        logger.debug(chro + ": Chunk Avg Length:{0:2.0f}".format(avg_length))
-        logger.debug(chro + ": Chunks created using empty 500bp:{0:2.0f}".format(chunk_type[0]))
-        logger.debug(chro + ": Chunks created using empty 50bp:{0:2.0f}".format(chunk_type[1]))
-        logger.debug(chro + ": Chunks created using minimum 50bp:{0:2.0f}".format(chunk_type[2]))
-        data = []
-        for i_ in np.arange(len(chunks) - 1):
-            data.append([int(chro[3:]), chunks[i_][1], chunks[i_ + 1][0]])
-        write_bed("chunks_{}.bed".format(chro), np.array(data))
+        if logging.getLogger().getEffectiveLevel() == 10:
+            logger = logging.getLogger()
+            avg_length = np.mean(np.array(chunks)[:, 1] - np.array(chunks)[:, 0])
+            logger.debug(chro + ": Chunk Avg Length:{0:2.0f}".format(avg_length))
+            logger.debug(chro + ": Chunks created using empty 500bp:{0:2.0f}".format(chunk_type[0]))
+            logger.debug(chro + ": Chunks created using empty 50bp:{0:2.0f}".format(chunk_type[1]))
+            logger.debug(chro + ": Chunks created using minimum 50bp:{0:2.0f}".format(chunk_type[2]))
+            data = []
+            for i_ in np.arange(len(chunks) - 1):
+                data.append([int(chro[3:]), chunks[i_][1], chunks[i_ + 1][0]])
+            write_bed("chunks_{}.bed".format(chro), np.array(data))
 
-        temp = np.array(chunks)[:, 1] - np.array(chunks)[:, 0]
-        fig1 = plt.figure()
-        sns.distplot(temp, hist=False, kde=True,
-                     kde_kws={'shade': True, 'linewidth': 0.5},
-                     label='Chunk Size ' + chro)
-        pp = PdfPages('0_chunk_size' + chro + '.pdf')
-        pp.savefig(fig1)
-        pp.close()
+            temp = np.array(chunks)[:, 1] - np.array(chunks)[:, 0]
+            fig1 = plt.figure()
+            sns.distplot(temp, hist=False, kde=True,
+                         kde_kws={'shade': True, 'linewidth': 0.5},
+                         label='Chunk Size ' + chro)
+            pp = PdfPages('0_chunk_size' + chro + '.pdf')
+            pp.savefig(fig1)
+            pp.close()
+    else:
+        chunks = []
+        if logging.getLogger().getEffectiveLevel() == 10:
+            logger = logging.getLogger()
+            logger.debug(chro + ": no chunks found.")
 
     return chunks
 
@@ -698,14 +713,17 @@ def frip_sn(annot, spec='mouse', file=None):
     ins = np.array(ins)
     ins_calc = (np.sum(ins[(ins < 210) * (ins > 190)]) / (1 + np.sum(ins[(ins < 80) * (ins > 60)])) )
 
-    fig1 = plt.figure()
-    plt.hist(ins, 300)
-    ax = plt.axis()
-    plt.axis([0, 1000, ax[2], ax[3]])
-    _, name = os.path.split(file[0])
-    pp = PdfPages(name[:-4] + '_insert_size.pdf')
-    pp.savefig(fig1)
-    pp.close()
+    try:
+        fig1 = plt.figure()
+        plt.hist(ins, 300)
+        ax = plt.axis()
+        plt.axis([0, 1000, ax[2], ax[3]])
+        _, name = os.path.split(file[0])
+        pp = PdfPages(name[:-4] + '_insert_size.pdf')
+        pp.savefig(fig1)
+        pp.close()
+    except:
+        pass
 
     return frip_count, stn, ins_calc, reads_r / approx_coef
 
