@@ -723,6 +723,7 @@ def frip_sn(annot, spec='mouse', file=None):
         pp.savefig(fig1)
         pp.close()
     except:
+        print("Matplotlib ERROR Generating Insert Size Distribution Plot")
         pass
 
     return frip_count, stn, ins_calc, reads_r / approx_coef
