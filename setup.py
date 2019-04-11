@@ -7,7 +7,7 @@ from setuptools.command.develop import develop
 from setuptools.command.egg_info import egg_info
 
 extensions = [Extension("libfwdbwdcpp",
-                        ["ChromA/util/FwdBwdRowMajor.cpp"],
+                        ["ChromA/util/FwdBwd.cpp"],
                         include_dirs=["ChromA/util/eigen"])]
 
 setup(
