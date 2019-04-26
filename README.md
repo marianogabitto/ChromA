@@ -4,6 +4,8 @@ ChromA is a probabilistic model to annotate chromatin regions into accessible or
 
 At the moment, we are building a webpage with extensive documentation. We give a brief introduction here on how to install and run ChromA but contact the authors or open an issue in github if you are encountering errors.
 
+Publication: https://www.biorxiv.org/content/10.1101/567669v1 
+
 # Installation
 ChromA is implemented in Python 3 and can be installed by running:
 > pip install git+https://github.com/marianogabitto/ChromA
