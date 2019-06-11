@@ -1,3 +1,4 @@
+import multiprocessing
 import seaborn as sns
 import numpy as np
 import logging
@@ -6,6 +7,7 @@ import pysam
 import copy
 import sys
 import csv
+import ray
 import os
 
 from collections import deque, Counter
@@ -74,7 +76,7 @@ def build_logger(verbose_mode, filename=None, supress=False):
     if verbose_mode == '1':
         logger.setLevel(logging.INFO)
         if not supress:
-            logger.info("Running Chrom in Info Mode")
+            logger.info("Running ChromA in Info Mode")
     elif verbose_mode == '2':
         if not supress:
             logger.setLevel(logging.DEBUG)
@@ -834,6 +836,7 @@ def count_validate_inputs(files=None, order=None):
     return reads_array, interval
 
 
+@ray.remote(num_cpus=1)
 def count(n_cells, n_regions, intes, tsv_st, tsv_end, tsv_chr, tsv_barc, barcode_number, chrom):
     idx_chr = tsv_chr == chrom
     t_st = tsv_st[idx_chr]
@@ -879,7 +882,6 @@ def count(n_cells, n_regions, intes, tsv_st, tsv_end, tsv_chr, tsv_barc, barcode
 
 def count_count(files=None, order=None, reads_array=None, intervals=None):
     logger = logging.getLogger()
-    logger.info("Counting ....")
     if files is None or order is None:
         logging.error("ERROR: No input files")
 
@@ -923,6 +925,7 @@ def count_count(files=None, order=None, reads_array=None, intervals=None):
             np.save(os.path.join(path, '{}_count_reads.npy'.format(name)), reads_array)
 
     # Filter Reads in Whitelisted Cells
+    logger.info("Whitelisting Cells.")
     barcode_number = dict()
     k_b = list()
     for i, barcode in enumerate(cell_list):
@@ -943,21 +946,41 @@ def count_count(files=None, order=None, reads_array=None, intervals=None):
     tsv_barcode = tsv_barcode[idx_t]
 
     # Setting up containers
+    logger.info("Counting ....")
     n_cell = len(cell_list)
     n_region = len(intervals)
-    list_chr = np.unique(tsv_chr)
-    counts = count(n_cell, n_region, intervals, tsv_st, tsv_end, tsv_chr, tsv_barcode, barcode_number, list_chr[0])
-    for c_ in list_chr[1:]:
-        counts = counts + count(n_cell, n_region, intervals, tsv_st, tsv_end, tsv_chr, barcode_number, c_)
+    list_chr = np.unique(tsv_chr).tolist()
+    counts = np.zeros((n_cell, n_region))
 
+    # ##################################
+    # Defining Ray Environment
+    processors = multiprocessing.cpu_count()
+    memo = ray.utils.get_system_memory()
+    logger.info("Running with {0} processors. Size of Plasma Storage {1}".format(int(processors), memo))
+    logger.info("Number of Recommended Processors is > 22. Recommended Memory > 80GB")
+    if not ray.is_initialized():
+        ray.init(num_cpus=int(processors), object_store_memory=memo, include_webui=False)
     # #############################################################################
     # #############################################################################
-    # Writing Outputs
+    while len(list_chr) > 0:
+        # Put Ray Objects
+        results = []
+        for i_ in np.arange(np.min([processors, len(list_chr)])):
+            logger.info("Counting Chromosome {0}.".format(list_chr[i_]))
+            results.append(count.remote(n_cell, n_region, intervals,
+                                        tsv_st, tsv_end, tsv_chr, tsv_barcode, barcode_number, list_chr[i_]))
+            list_chr.remove(list_chr[i_])
+        # Collect Ray Objects
+        for r_ in results:
+            counts += counts + ray.get(r_)
+    # #############################################################################
+    # #############################################################################
     # Setting up paths
+    logger.info("Writing Outputs.")
     path, file = os.path.split(tsv_file)
     path_bed, bfile = os.path.split(bed_file)
 
-    logger.info("Writing Outputs.")
+    #         Writing Matrix
     temp = csr_matrix(counts, dtype=int)
     mmwrite(os.path.join(path, file[:-4] + "_" + bfile[:-4] + "_counts4.mtx"), temp)
 

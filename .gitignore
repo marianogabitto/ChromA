@@ -1,4 +1,4 @@
-# PYCHARM FILES
+ # PYCHARM FILES
 *.iml
 *.xml
 
@@ -6,6 +6,11 @@
 results
 results/
 results/*
+
+# RESULT FILES
+*.npy
+*.pdf
+
 
 # IDEA Pycharm Omit
 .idea/*
