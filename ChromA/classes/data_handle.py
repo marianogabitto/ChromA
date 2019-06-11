@@ -4,8 +4,14 @@ import logging
 import pickle
 import pysam
 import copy
+import sys
 import csv
 import os
+
+from collections import deque, Counter
+from scipy.sparse import csr_matrix
+from scipy.io import mmwrite
+import pysam
 
 import matplotlib
 gui_env = ['Agg', 'TKAgg', 'GTKAgg', 'Qt4Agg', 'WXAgg']
@@ -748,3 +754,223 @@ def metrics(filename, annotations=None, species=None):
             logger.info("Signal To Noise: {0:3.3f}".format(sn))
             logger.info("Insert Size Metric (Ratio MonoNuc to Nuc-Free): {0:3.3f}".format(ins_size))
             logger.info("Number of Reads (Extrapolated from Chromosome 1): {0:5.0e}".format(number_r))
+
+
+# ######################################################################
+# COUNT ROUTINES
+def count_form_name(files=None):
+    logger = logging.getLogger()
+    logger.info("Validating Inputs")
+    if files is None:
+        logging.error("ERROR: No input files")
+    if len(files) < 3 or len(files) > 3:
+        logging.error("ERROR: Three files are needed. peaks.bed, counts.tsv, whitelisted_cells.csv")
+
+    # Look for Peak and Count Files
+    filename_0, file_extension_0 = os.path.splitext(files[0])
+    filename_1, file_extension_1 = os.path.splitext(files[1])
+    filename_2, file_extension_2 = os.path.splitext(files[2])
+    extensions = np.array([file_extension_0, file_extension_1, file_extension_2])
+    filenames = np.array([filename_0, filename_1, filename_2])
+    try:
+        id_tsv = np.where(extensions == '.tsv')[0][0]
+        id_bed = np.where(extensions == '.bed')[0][0]
+        id_csv = np.where(extensions == '.csv')[0][0]
+        order = [id_tsv, id_bed, id_csv]
+        peak_file = filenames[id_bed]
+        count_file = filenames[id_tsv]
+        name = peak_file + "_" + os.path.split(count_file)[1]
+    except:
+        name = order = []
+        logging.error("ERROR: Three files are needed. peaks.bed, counts.tsv, whitelisted_cells.csv")
+
+    return name, order
+
+
+def count_validate_inputs(files=None, order=None):
+    logger = logging.getLogger()
+    logger.info("Validating Inputs")
+    if files is None:
+        logging.error("ERROR: No input files")
+    if order is None:
+        _, order = dh.count_form_name(files=files)
+    # order = [id_tsv, id_bed, id_csv]
+
+    logging.info("Preprocessing TSV file: {}".format(files[order[0]]))
+    path, name = os.path.split(files[order[0]])
+    if not os.path.isfile(os.path.join(path, '{}_count_reads.npy'.format(name))):
+        try:
+            with open(files[order[0]], 'r') as f:
+                max_size = len(f.readlines())
+
+            with open(files[order[0]], 'r') as f:
+                reads_array = np.zeros(max_size, dtype='|S5, int, int, |S30')
+                reader = csv.reader(f, delimiter='\t')
+                idx = 0
+                for row in reader:
+                    reads_array[idx][0] = row[0]
+                    reads_array[idx][1] = row[1]
+                    reads_array[idx][2] = row[2]
+                    reads_array[idx][3] = row[3]  # Here we need to remember the barcode_name
+                    idx += 1
+                np.save(os.path.join(path, '{}_count_reads.npy'.format(name)), reads_array)
+        except:
+            logging.error("ERROR: Could not read file as TSV format.{}".format(files[0]))
+            raise SystemExit
+    else:
+        reads_array = np.load(os.path.join(path, '{}_count_reads.npy'.format(name)))
+
+    logging.info("Preprocessing BED file: {}".format(files[order[1]]))
+    try:
+        interval = read_bed(files[order[1]])
+    except:
+        logging.error("ERROR: Could not read file as BED format.{}".format(files[order[1]]))
+        raise SystemExit
+
+    # TODO: Validate whitelisted_cells.csv
+
+    logger.info("Inputs Validated")
+
+    return reads_array, interval
+
+
+def count(n_cells, n_regions, intes, tsv_st, tsv_end, tsv_chr, tsv_barc, barcode_number, chrom):
+    idx_chr = tsv_chr == chrom
+    t_st = tsv_st[idx_chr]
+    t_end = tsv_end[idx_chr]
+    t_b = tsv_barc[idx_chr]
+
+    # Fast Indexing Bed File
+    bed = np.array(intes)
+    for i, c in enumerate(intes):
+        if c[0] == chrom:
+            break
+    shift = i
+    bed = bed[bed[:, 0] == chrom, :]
+    bed1 = np.int32(bed[:, 1])
+    bed2 = np.int32(bed[:, 2])
+
+    # Matrix of Binding Events per cell.
+    count_matrix = np.zeros((n_cells, n_regions))
+    # For each region
+    for i_ in np.arange(len(bed1)):
+        # Count Left Binding Event
+        begin = t_st > bed1[i_]
+        end = t_st < bed2[i_]
+        where = np.where((1 * begin + 1 * end) == 2)[0]
+        if len(where) > 0:
+            idx_br = [barcode_number[x] if x in barcode_number else [] for x in t_b[where]]
+            ll = np.array([(item, count_barcode) for item, count_barcode in Counter(idx_br).items()])
+            if len(ll) > 0:
+                count_matrix[ll[:, 0], shift + i_] += ll[:, 1]
+
+        # Count Right Binding Event
+        begin = t_end > bed1[i_]
+        end = t_end < bed2[i_]
+        where = np.where((1 * begin + 1 * end) == 2)[0]
+        if len(where) > 0:
+            idx_bl = [barcode_number[x] if x in barcode_number else [] for x in t_b[where]]
+            ll = np.array([(item, count_barcode) for item, count_barcode in Counter(idx_bl).items()])
+            if len(ll) > 0:
+                count_matrix[ll[:, 0], shift + i_] += ll[:, 1]
+
+    return count_matrix
+
+
+def count_count(files=None, order=None, reads_array=None, intervals=None):
+    logger = logging.getLogger()
+    logger.info("Counting ....")
+    if files is None or order is None:
+        logging.error("ERROR: No input files")
+
+    # Getting File Info
+    tsv_file = files[order[0]]
+    bed_file = files[order[1]]
+    cells_file = files[order[2]]
+
+    logger.info("Reading Whitelisted Cells.")
+    cell_list = deque()
+    with open(cells_file, 'r') as f:
+        reader = csv.reader(f, delimiter='\t')
+        for i, row in enumerate(reader):
+            if i > 1:
+                cell = str.split(row[0], ",")
+                if not (cell[8] == 'None'):
+                    cell_list.append(cell)
+
+    logger.info("Reading Bed File.")
+    if intervals is None:
+        intervals = read_bed(bed_file)
+
+    logger.info("Reading Tsv File.")
+    if not (reads_array is None):
+        max_size = len(reads_array)
+    else:
+        path, name = os.path.split(files[0])
+        with open(files[0], 'r') as f:
+            max_size = len(f.readlines())
+
+        with open(files[0], 'r') as f:
+            reads_array = np.zeros(max_size, dtype='|S5, int, int, int')
+            reader = csv.reader(f, delimiter='\t')
+            idx = 0
+            for row in reader:
+                reads_array[idx][0] = row[0]
+                reads_array[idx][1] = row[1]
+                reads_array[idx][2] = row[2]
+                reads_array[idx][3] = row[4]
+                idx += 1
+            np.save(os.path.join(path, '{}_count_reads.npy'.format(name)), reads_array)
+
+    # Filter Reads in Whitelisted Cells
+    barcode_number = dict()
+    k_b = list()
+    for i, barcode in enumerate(cell_list):
+        barcode_number[barcode[0]] = i
+        k_b.append(barcode[0])
+
+    tsv_chr = np.zeros(max_size, dtype='S5').astype(str)
+    tsv_st = np.zeros(max_size, dtype=int)
+    tsv_end = np.zeros(max_size, dtype=int)
+    tsv_barcode = np.zeros(max_size, dtype='S20').astype(str)
+    for i_ in np.arange(max_size):
+        if reads_array[i_][3].decode("utf-8") in k_b:
+            [tsv_chr[i_], tsv_st[i_], tsv_end[i_], tsv_barcode[i_]] = reads_array[i_]
+    idx_t = tsv_st > 0
+    tsv_chr = tsv_chr[idx_t]
+    tsv_st = tsv_st[idx_t]
+    tsv_end = tsv_end[idx_t]
+    tsv_barcode = tsv_barcode[idx_t]
+
+    # Setting up containers
+    n_cell = len(cell_list)
+    n_region = len(intervals)
+    list_chr = np.unique(tsv_chr)
+    counts = count(n_cell, n_region, intervals, tsv_st, tsv_end, tsv_chr, tsv_barcode, barcode_number, list_chr[0])
+    for c_ in list_chr[1:]:
+        counts = counts + count(n_cell, n_region, intervals, tsv_st, tsv_end, tsv_chr, barcode_number, c_)
+
+    # #############################################################################
+    # #############################################################################
+    # Writing Outputs
+    # Setting up paths
+    path, file = os.path.split(tsv_file)
+    path_bed, bfile = os.path.split(bed_file)
+
+    logger.info("Writing Outputs.")
+    temp = csr_matrix(counts, dtype=int)
+    mmwrite(os.path.join(path, file[:-4] + "_" + bfile[:-4] + "_counts4.mtx"), temp)
+
+    #         Writing Barcodes
+    f = open(os.path.join(path, file[:-4] + "_" + bfile[:-4] + "_barcodes.tsv"), "w")
+    for i, barcode in enumerate(cell_list):
+        print(barcode[0], end='\n', file=f)
+    f.close()
+
+    #         Writing Bed Peaks
+    f = open(os.path.join(path, file[:-4] + "_" + bfile[:-4] + "_peaks.bed"), "w")
+    for i, region in enumerate(intervals):
+        print(region[0], region[1], region[2], end='\n', sep='\t', file=f)
+    f.close()
+
+    logger.info("Finish Counting.")
