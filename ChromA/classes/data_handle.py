@@ -965,14 +965,14 @@ def count_count(files=None, order=None, reads_array=None, intervals=None):
     while len(list_chr) > 0:
         # Put Ray Objects
         results = []
-        for i_ in np.arange(np.min([processors, len(list_chr)])):
-            logger.info("Counting Chromosome {0}.".format(list_chr[i_]))
+        for _ in np.arange(np.min([processors, len(list_chr)])):
+            logger.info("Counting Chromosome {0}.".format(list_chr[0]))
             results.append(count.remote(n_cell, n_region, intervals,
-                                        tsv_st, tsv_end, tsv_chr, tsv_barcode, barcode_number, list_chr[i_]))
-            list_chr.remove(list_chr[i_])
+                                        tsv_st, tsv_end, tsv_chr, tsv_barcode, barcode_number, list_chr[0]))
+            list_chr.remove(list_chr[0])
         # Collect Ray Objects
         for r_ in results:
-            counts += counts + ray.get(r_)
+            counts += ray.get(r_)
     # #############################################################################
     # #############################################################################
     # Setting up paths
@@ -982,7 +982,7 @@ def count_count(files=None, order=None, reads_array=None, intervals=None):
 
     #         Writing Matrix
     temp = csr_matrix(counts, dtype=int)
-    mmwrite(os.path.join(path, file[:-4] + "_" + bfile[:-4] + "_counts4.mtx"), temp)
+    mmwrite(os.path.join(path, file[:-4] + "_" + bfile[:-4] + "_counts.mtx"), temp)
 
     #         Writing Barcodes
     f = open(os.path.join(path, file[:-4] + "_" + bfile[:-4] + "_barcodes.tsv"), "w")
