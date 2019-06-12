@@ -340,6 +340,23 @@ class Trainer(object):
     def get_elbo(self):
         return self.elbo[:self.elbo_interrupted, :]
 
+    def out(self, s_s):
+        self.logger.info(msg + "Formatting Output, Saving {} Regions.".format(len(self.length)))
+        regions = []
+        regions_start = []
+        regions_chr = []
+        regions_length = []
+        count = 0
+        for i_ in np.arange(len(self.length)):
+            regions.append(s_s[count: count + self.length[i_]])
+            regions_chr.append(self.chrom[i_])
+            regions_start.append(self.start[i_])
+            regions_length.append(self.length[i_])
+            count += self.length[i_]
+        self.logger.info(msg + "Output Stored.")
+
+        return [regions, regions_chr, regions_start, regions_length]
+
     def train(self, iterations=20, msg=""):
         if len(self.data) > 0:
             if self.n_exp == 1:
@@ -370,24 +387,10 @@ class Trainer(object):
                 break
 
         # Formatting the Output
-        self.logger.info(msg + "Calculate S")
-        s_s = message_passing_posterior_state(self.posterior.pi, self.posterior.tmat, self.states0, self.s, self.k,
-                                              self.length, data=self.data)
-        self.logger.info(msg + "Formatting Output, Saving {} Regions.".format(len(self.length)))
-        regions = []
-        regions_start = []
-        regions_chr = []
-        regions_length = []
-        count = 0
-        for i_ in np.arange(len(self.length)):
-            regions.append(s_s[count: count + self.length[i_]])
-            regions_chr.append(self.chrom[i_])
-            regions_start.append(self.start[i_])
-            regions_length.append(self.length[i_])
-            count += self.length[i_]
-        self.logger.info(msg + "Output Stored.")
+        output = self.out(s_s=message_passing_posterior_state(self.posterior.pi, self.posterior.tmat, self.states0,
+                                                              self.s, self.k,self.length, data=self.data))
 
-        return [regions, regions_chr, regions_start, regions_length], self.states0
+        return output, self.states0
 
     def train_multiple(self, iterations=5, msg=""):
         iterations = 10
@@ -397,13 +400,16 @@ class Trainer(object):
 
         # Fit each Datasets Preliminary and Update Parameters
         states = list()
+        post_s = list()
         for i_ in np.arange(self.n_exp):
             self.logger.info(msg + "Fitting Individual models. Model {}.".format(i_))
             [self.vb_update(exp=i_) for _ in np.arange(5)]
-            self.posterior.s_s += message_passing_posterior_state(self.posterior.pi, self.posterior.tmat, self.states0,
-                                                                  self.s, self.k, self.length,
-                                                                  data=self.data[:, i_][:, None]) / self.n_exp
+            temp_s = message_passing_posterior_state(self.posterior.pi, self.posterior.tmat, self.states0,
+                                                     self.s, self.k, self.length,
+                                                     data=self.data[:, i_][:, None]) / self.n_exp
+            self.posterior.s_s += temp_s
             states.append(copy.deepcopy(self.states0))
+            post_s.append(self.out(s_s=temp_s))
         self.states = states
 
         # Iterations
@@ -417,22 +423,19 @@ class Trainer(object):
             #     break
 
         # Formatting the Output
-        s_s = self.posterior.s_s
-        self.logger.info(msg + "Formatting Output, Saving {} Regions.".format(len(self.length)))
-        regions = []
-        regions_start = []
-        regions_chr = []
-        regions_length = []
-        count = 0
-        for i_ in np.arange(len(self.length)):
-            regions.append(s_s[count: count + self.length[i_]])
-            regions_chr.append(self.chrom[i_])
-            regions_start.append(self.start[i_])
-            regions_length.append(self.length[i_])
-            count += self.length[i_]
-        self.logger.info(msg + "Output Stored.")
+        # [consensus] = [annotations, chr, st, length]
+        consensus_s = self.out(s_s=self.posterior.s_s)
+        # [output] = [# regions][consensus, exp1, exp2, ...]
+        output = list()
+        for reg_ in np.arange(len(consensus_s[0])):
+            temp = consensus_s[0][reg_]
+            for exp_ in np.arange(len(post_s)):
+                temp.append(post_s[exp_][reg_])
+            output.append(temp)
 
-        return [regions, regions_chr, regions_start, regions_length], self.states
+        # Returning
+        # [annotations[# regs][consensus, exp1, exp2, ...], chr[# regs], st[# regs], length[# regs]]
+        return [output, consensus_s[1:]], self.states
 
     def vb_update(self, exp=0):
 
