@@ -21,6 +21,8 @@ def main(command_line=None):
     parser_count = subparsers.add_parser('count', help='Count reads in peaks.')
     parser_count.add_argument('-ct', '--count', nargs='+', action='store', dest='count', type=str, required=True,
                               default="False", help='Counts file.tsv in peaks.bed (default = False, optional command)')
+    parser_count.add_argument('-prom', '--promoters', action='store', dest='promoter', type=bool, required=False,
+                              default=False, help='Count on Promoter regions (Optional)')
 
     parser_atac = subparsers.add_parser('atac', help='Run ChromA for ATAC experiment.')
     parser_atac.add_argument('-i', '--input', nargs='+', action='store', dest='filename', type=str, required=True,
@@ -31,19 +33,18 @@ def main(command_line=None):
                              default=False, help='Parse reads on selected regions (Optional)')
     parser_atac.add_argument('-it', '--iterations', action='store', dest='iterations', type=int, required=False,
                              default=20, help='Number of iterations to fit the algorithm (default = 10, optional)')
-
-    parser_atac.add_argument('-spec', '--species', action='store', dest='species', type=str, required=False,
-                             default='mouse', choices=['mouse', 'human', 'fly'],
-                             help='Genome Species.(default = mouse, optional)')
     parser_atac.add_argument('-bl', '--blacklisted', action='store', dest='blacklisted', type=bool, required=False,
                              default=True, help='Remove Blacklisted peaks. (default is True).')
 
     parser_atac.add_argument('-nome', '--no-metrics', action='store', dest='no_metrics', type=bool, required=False,
                              default=False, help='Flag to Compute Metrics. (default is True).')
 
+    parser.add_argument('-spec', '--species', action='store', dest='species', type=str, required=False,
+                        default='mouse', choices=['mouse', 'human', 'fly'],
+                        help='Genome Species.(default = mouse, optional)')
     parser.add_argument('-v', '--version', action='version', version='%(prog)s {version}'.format(version=__version__))
     parser.add_argument('-ve', '--verbose', action='store', dest='verbose_level', type=str, required=False,
-                              default='1', help='verbose level. 1 display messages, 0 omit them (default is 0).')
+                        default='1', help='verbose level. 1 display messages, 0 omit them (default is 0).')
 
     options = parser.parse_args(command_line)
     if not (hasattr(options, "count") or hasattr(options, 'filename')):
@@ -56,6 +57,14 @@ def main(command_line=None):
     # #############################################
     # COUNT INTERFACE
     if hasattr(options, "count"):
+
+        # COUNT ON PROMOTERS:
+        if options.promoter is True:
+            # Extract Bed File Location
+            prom_bed = dh.count_get_promoters_files(spec=options.species)
+            # Add to filenames
+            options.count.append(prom_bed)
+
         # EXTRACT NAME, BUILD LOGGER, VALIDATE INPUTS
         name, order = dh.count_form_name(files=options.count)
         name = name + '.log'

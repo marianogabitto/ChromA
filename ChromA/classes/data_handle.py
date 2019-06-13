@@ -760,6 +760,28 @@ def metrics(filename, annotations=None, species=None):
 
 # ######################################################################
 # COUNT ROUTINES
+def count_get_promoters_files(spec=None):
+    if spec is None:
+        print("Species Required.")
+        raise SystemExit
+
+    path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    path = os.path.join(path, "data/promoters/")
+    if spec == 'mouse':
+        promoter = os.path.join(path, "prom_mm10_genes.bed")
+    elif spec == 'human':
+        promoter = os.path.join(path, "prom_hg19_genes.bed")
+    elif spec == 'fly':
+        promoter = os.path.join(path, "prom_dmel6_genes.bed")
+    else:
+        print('Wrong species name: mouse/human/fly')
+        promoter = []
+        quit()
+    assert os.path.isfile(promoter)
+
+    return promoter
+
+
 def count_form_name(files=None):
     logger = logging.getLogger()
     logger.info("Validating Inputs")

@@ -10,10 +10,10 @@ import ray
 import os
 
 import matplotlib
-gui_env = ['Agg', 'TKAgg','GTKAgg','Qt4Agg','WXAgg']
+gui_env = ['Agg', 'TKAgg', 'GTKAgg', 'Qt4Agg', 'WXAgg']
 for gui in gui_env:
     try:
-        matplotlib.use(gui,warn=False, force=True)
+        matplotlib.use(gui, warn=False, force=True)
         from matplotlib import pyplot as plt
         break
     except:
@@ -121,7 +121,7 @@ class BayesianHsmmExperimentMultiProcessing:
         results.append(chromosome[0].train.remote(iterations=50, msg="Th17 Regions: "))
 
         # Collect Results
-        res, states = ray.get(results[0])
+        res, stts = ray.get(results[0])
         for l_ in np.arange(len(res[0])):
             self.annotations.append(res[0][l_])
             self.annotations_chr.append(res[1][l_])
@@ -142,11 +142,11 @@ class BayesianHsmmExperimentMultiProcessing:
             self.annotations_start = []
             for i_ in np.arange(len(self.states)):
                 # if single File. states is list of states
-                if type(self.states[0]) == type(states[0]):
-                    self.states[i_] = copy.deepcopy(states[i_])
+                if type(self.states[0]) == type(stts[0]):
+                    self.states[i_] = copy.deepcopy(stts[i_])
                 # if multiple Files. states is list of list of states
                 else:
-                    self.states[i_] = copy.deepcopy(states[0][i_])
+                    self.states[i_] = copy.deepcopy(stts[0][i_])
                 self.states[i_].prior = self.states[i_].posterior
 
             chr_list = []
@@ -169,7 +169,7 @@ class BayesianHsmmExperimentMultiProcessing:
                 self.logger.info('Running on human genome. 22 Chroms')
             elif species == 'fly':
                 self.species = 'fly'
-                chr_list = ['2L', '2R','3L', '3R', '4', 'X', 'Y']
+                chr_list = ['2L', '2R', '3L', '3R', '4', 'X', 'Y']
                 self.logger.info('Running on fly genome. 7 Chroms')
 
             # Run Training in parallel
@@ -351,7 +351,7 @@ class BayesianHsmmExperimentMultiProcessing:
 
 @ray.remote(num_cpus=1)
 class Trainer(object):
-    def __init__(self, chr_, filename, species, blacklisted, states, prior,
+    def __init__(self, chr_, filename, species, blacklisted, states_, prior,
                  top_states=None, pi=None, tmat=None, logger=None, log_file=None):
         # Init Logging Module
         if logger is None:
@@ -367,8 +367,8 @@ class Trainer(object):
         # Formatting States
         # State0 is used to fit individual Models.
         # State is used to fit Multi-experiment Models.
-        self.states0 = copy.deepcopy(states)
-        self.states = copy.deepcopy(states)
+        self.states0 = copy.deepcopy(states_)
+        self.states = copy.deepcopy(states_)
         for s_ in self.states:
             s_.mo = list()
         for s_ in self.states0:
@@ -466,7 +466,7 @@ class Trainer(object):
 
         # Formatting the Output
         output = self.out(s_s=message_passing_posterior_state(self.posterior.pi, self.posterior.tmat, self.states0,
-                                                              self.s, self.k,self.length, data=self.data), msg=msg)
+                                                              self.s, self.k, self.length, data=self.data), msg=msg)
 
         return output, self.states0
 
