@@ -194,57 +194,135 @@ class BayesianHsmmExperimentMultiProcessing:
                         self.annotations_start.append(res[2][l_])
                         self.annotations_length.append(res[3][l_])
 
-    def save_bedfile(self, path, name=None):
+    def save_bed(self, path, name=None):
+        # Check that we have already computed the annotations and return the depth of the result.
+        if len(self.annotations) == 0:
+            print("Compute Annotations before writing to file.")
+            return
+        else:
+            depth = lambda L: isinstance(L, list) and max(map(depth, L)) + 1
+            d_annot = depth(self.annotations)
+
         # Format Filename
         if name is None:
             name = "region_"
         if path is "":
             path = os.getcwd()
 
-        # Format Regions
+        # Identify Single or Multiple Exp. Submit Bed File to be written.
+        # Format Chromosome Names
         chromm = list()
         for i_ in np.arange(len(self.annotations_chr)):
             chromm.append(self.annotations_chr[i_][3:])
 
-        # Save Bed-File All States
-        regs = []
-        for l_ in np.arange(len(self.annotations)):
-            if self.annotations[0].shape[1] > 2:
-                regs.append(self.annotations[l_][:, 1:].sum(axis=1))
-            else:
-                regs.append(self.annotations[l_][:, 1])
-        peaks = data_handle.bed_result(os.path.join(path, name) + '_allpeaks.bed',
-                                       regs, self.annotations_start, chromm, threshold=0.05)
-        self.peaks = peaks
+        if d_annot == 1:
+            # Do single trial
+            fname = os.path.join(path, name) + '_peaks.bed'
+            self.save_bedfile(filename=fname,  annotations=self.annotations,
+                              chrom=chromm, start=self.annotations_start)
+        else:
+            # Do multiple trials
+            # First write Consensus
+            peaks = list()
+            fname = os.path.join(path, name) + '_cons_peaks.bed'
+            peaks.append(self.save_bedfile(filename=fname, annotations=self.annotations, chrom=chromm,
+                                           start=self.annotations_start, exp=0))
+            # Then Experiments
+            for i_ in np.arange(1, len(self.annotations[0])):
+                fname = os.path.join(path, name) + '_exp_' + i_.__str__() + '_peaks.bed'
+                peaks.append(self.save_bedfile(filename=fname, annotations=self.annotations, chrom=chromm,
+                                               start=self.annotations_start, exp=i_))
 
-        # Save Bed-File High Signal State
-        regs = []
-        if self.annotations[0].shape[1] > 2:
-            for l_ in np.arange(len(self.annotations)):
-                regs.append(self.annotations[l_][:, 2])
-            _ = data_handle.bed_result(os.path.join(path, name) + '_highpeaks.bed',
-                                       regs, self.annotations_start, chromm, threshold=0.05)
-
-        # Save Bed-File Broad Signal
-        if self.annotations[0].shape[1] > 2:
-            peaks = data_handle.bed_result_broad_peaks(os.path.join(path, name) + '_broadpeaks.bed',
-                                                       self.annotations, self.annotations_start, chromm, threshold=0.05)
-            self.peaks = peaks
+            # Finally, Consensus Plus Experiments
+            fname = os.path.join(path, name) + '_agg_peaks.bed'
+            self.aggregate_peaks(peaks, filename=fname)
 
         self.logger.info("Saved Bed File. ")
+
+    @staticmethod
+    def save_bedfile(filename=None, annotations=None, chrom=None, start=None, exp=None):
+        if (filename is None) or (annotations is None) or (chrom is None) or (start is None):
+            print("Empty Annotations.")
+            return
+
+        regs = []
+        if exp is None:
+            for l_ in np.arange(len(annotations)):
+                regs.append(annotations[l_][:, 1])
+        else:
+            for l_ in np.arange(len(annotations)):
+                regs.append(annotations[l_][exp][:, 1])
+        peaks = data_handle.bed_result(filename, regs, start, chrom, threshold=0.05)
+
+        return peaks
+
+    @staticmethod
+    def aggregate_peaks(peaks, filename):
+        # Parse Information
+        # peaks[cons, exp1, exp2, ...][chr, regs]
+        chr_l = [peaks[0][0]]
+        exps = [peaks[0][1]]
+        for e_ in np.arange(1, len(peaks)):
+            chr_l.append(peaks[e_][0])
+            exps.append(peaks[e_][1])
+
+        # Intersect peaks
+        reg_out = exps[0]
+        chr_out = chr_l[0]
+
+        def get_overlap(a, b):
+            # [a] = [2], [b] = [n, 2]
+            lower = np.min([a[1] * np.ones_like(b[:, 1]), b[:, 1]], axis=0)
+            upper = np.max([a[0] * np.ones_like(b[:, 0]), b[:, 0]], axis=0)
+            return np.max([np.zeros_like(lower), lower - upper], axis=0)
+
+        for ne_, e_ in enumerate(exps[1:]):
+            r = reg_out.tolist()
+            for npeak_, peak_ in enumerate(e_):
+                if np.all(get_overlap(peak_, reg_out) == 0):
+                    r.append(peak_)
+                    chr_out.append(chr_l[ne_ + 1][npeak_])
+            reg_out = np.array(r)
+
+        # Sort
+        index = np.argsort(reg_out[:, 0])
+        idx_out = []
+        chr_out = np.array(chr_out)
+        for c_ in np.sort(np.unique(chr_out)):
+            idx_out.append(index[chr_out == c_])
+        idx_out = np.concatenate(idx_out)
+        chr_out = chr_out[idx_out]
+        reg_out = reg_out[idx_out]
+
+        # Write Output
+        data_handle.write_bed(filename, data=np.array(chr_out), start=reg_out[:, 0], end=reg_out[:, 1])
 
     def validate_regions(self):
         # Get Logger
         logger = logging.getLogger('metrics')
         logger.info("METRICS ON REGIONS.")
 
+        # Compute Metric on Single Trial or Consensus State
+        depth = lambda l: isinstance(l, list) and max(map(depth, l)) + 1
+        d_annot = depth(self.annotations)
+        if d_annot == 1:
+            # Annotations Single Trial
+            # self.annotations[# regions][length x states]
+            annot = self.annotations
+        else:
+            # Annotations Multiple Trial
+            # self.annotations[# regions][Cons, exp1, exp2..][length x states]
+            annot = list()
+            for r_ in self.annotations:
+                annot.append(r_[0])
+
         # Compute Metrics
         total_length = np.sum(self.annotations_length)
-        n_states = self.annotations[0].shape[1]
+        n_states = annot[0].shape[1]
         if n_states > 2:
             state1 = np.zeros(n_states - 1)
             for s_ in np.arange(n_states - 1):
-                for r_ in self.annotations:
+                for r_ in annot:
                     state1[s_] += r_[:, s_ + 1].sum()
             perc = state1 / total_length
             if perc[1] > 0.25:
@@ -259,7 +337,7 @@ class BayesianHsmmExperimentMultiProcessing:
 
         else:
             state1 = 0
-            for r_ in self.annotations:
+            for r_ in annot:
                 state1 += r_[:, 1].sum()
             perc = state1 / total_length
             if perc > 0.25:
@@ -340,7 +418,7 @@ class Trainer(object):
     def get_elbo(self):
         return self.elbo[:self.elbo_interrupted, :]
 
-    def out(self, s_s):
+    def out(self, s_s, msg):
         self.logger.info(msg + "Formatting Output, Saving {} Regions.".format(len(self.length)))
         regions = []
         regions_start = []
@@ -388,7 +466,7 @@ class Trainer(object):
 
         # Formatting the Output
         output = self.out(s_s=message_passing_posterior_state(self.posterior.pi, self.posterior.tmat, self.states0,
-                                                              self.s, self.k,self.length, data=self.data))
+                                                              self.s, self.k,self.length, data=self.data), msg=msg)
 
         return output, self.states0
 
@@ -409,7 +487,7 @@ class Trainer(object):
                                                      data=self.data[:, i_][:, None]) / self.n_exp
             self.posterior.s_s += temp_s
             states.append(copy.deepcopy(self.states0))
-            post_s.append(self.out(s_s=temp_s))
+            post_s.append(self.out(s_s=temp_s, msg='Exp:' + i_.__str__() + ' ' + msg))
         self.states = states
 
         # Iterations
@@ -424,18 +502,19 @@ class Trainer(object):
 
         # Formatting the Output
         # [consensus] = [annotations, chr, st, length]
-        consensus_s = self.out(s_s=self.posterior.s_s)
+        consensus_s = self.out(s_s=self.posterior.s_s, msg=msg)
         # [output] = [# regions][consensus, exp1, exp2, ...]
         output = list()
         for reg_ in np.arange(len(consensus_s[0])):
-            temp = consensus_s[0][reg_]
+            temp = list()
+            temp.append(consensus_s[0][reg_])
             for exp_ in np.arange(len(post_s)):
-                temp.append(post_s[exp_][reg_])
+                temp.append(post_s[exp_][0][reg_])
             output.append(temp)
 
         # Returning
         # [annotations[# regs][consensus, exp1, exp2, ...], chr[# regs], st[# regs], length[# regs]]
-        return [output, consensus_s[1:]], self.states
+        return [output, consensus_s[1], consensus_s[2], consensus_s[3]], self.states
 
     def vb_update(self, exp=0):
 

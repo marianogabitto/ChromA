@@ -604,7 +604,7 @@ def bed_result(filename, data, start, chrom, threshold=0.5):
         print("No regions to write to Bed File.")
         reg_out = []
 
-    return reg_out
+    return [chr_l, reg_out]
 
 
 def bed_result_broad_peaks(filename, data, start, chrom, threshold=0.5):

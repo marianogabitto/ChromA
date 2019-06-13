@@ -111,7 +111,7 @@ def main(command_line=None):
     if options.save_bed is not None:
         logger.info("Saving Bed File")
         path, filename = os.path.split(options.save_bed)
-        hsmm.save_bedfile(path=path, name=filename)
+        hsmm.save_bed(path=path, name=filename)
         if not options.no_metrics:
             dh.metrics(filename=options.filename, annotations=hsmm.peaks, species=options.species)
         sys.exit()
