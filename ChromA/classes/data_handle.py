@@ -90,7 +90,7 @@ def build_logger(verbose_mode, filename=None, supress=False):
     logger_metric.addHandler(mhandler)
 
 
-def validate_inputs(files=None, species=None):
+def validate_inputs(files=None, species=None, dnase=False):
 
     logger = logging.getLogger()
     logger.info("Validating Inputs")
@@ -104,9 +104,9 @@ def validate_inputs(files=None, species=None):
         if f_[-3:] == 'bam':
             try:
                 if species == 'fly':
-                    chr_reads([f_], 'chr3R', 5624047, 5625400)
+                    chr_reads([f_], 'chr3R', 5624047, 5625400, dnase=dnase)
                 else:
-                    chr_reads([f_], 'chr1', 3e7, 3e7 + 100)
+                    chr_reads([f_], 'chr1', 3e7, 3e7 + 100, dnase=dnase)
             except:
                 logging.error("ERROR:Could not read file as BAM format. {}".format(f_))
                 raise SystemExit
@@ -150,7 +150,7 @@ def validate_inputs(files=None, species=None):
     return
 
 
-def regions_th17(filename=None, species='mouse'):
+def regions_th17(filename=None, species='mouse', dnase=False):
     # ############################################
     # MOUSE REGIONS
     # Tfrc: chr16:32, 580, 000 - 32, 670, 000
@@ -237,7 +237,7 @@ def regions_th17(filename=None, species='mouse'):
         start = regions_list[l_][1]
         end = regions_list[l_][2]
 
-        obs_vec.append(chr_reads(filename, chrom, start, end))
+        obs_vec.append(chr_reads(filename, chrom, start, end, dnase=dnase))
         length.append(end - start)
         start_l.append(start)
         chrom_l.append(chrom)
@@ -252,7 +252,7 @@ def regions_th17(filename=None, species='mouse'):
     return out_data, length, start_l, chrom_l
 
 
-def regions_chr(filename=None, chromosome=None, species='mouse', blacklisted=True):
+def regions_chr(filename=None, chromosome=None, species='mouse', blacklisted=True, dnase=False):
 
     logger = logging.getLogger()
     # Validate Species
@@ -278,7 +278,7 @@ def regions_chr(filename=None, chromosome=None, species='mouse', blacklisted=Tru
 
     # Compute Coverage of chromosome
     logger.info(chr_ + ": Computing Coverage")
-    reads = chr_reads(filename, chr_, 1, chrom_lens[chr_])
+    reads = chr_reads(filename, chr_, 1, chrom_lens[chr_], dnase=dnase)
 
     # Compute Chunks
     logger.info(chr_ + ": Parsing")
@@ -311,7 +311,15 @@ def regions_chr(filename=None, chromosome=None, species='mouse', blacklisted=Tru
 
 # ######################################################################
 # DATA PROCESSING ROUTINES
-def chr_reads(files, chrom, start, end, insert_size=False):
+def chr_reads(files, chrom, start, end, insert_size=False, dnase=False):
+    # Correct Reads for atac assay or dnase
+    if dnase is True:
+        corr_right = 0
+        corr_left = 0
+    else:
+        corr_right = -5
+        corr_left = 4
+
     length = int(end - start)
     n_files = len(files)
     out = np.zeros((length, n_files))
@@ -326,8 +334,8 @@ def chr_reads(files, chrom, start, end, insert_size=False):
                         or read.is_duplicate or read.mapping_quality < 30:
                     continue
                 else:
-                    left_tn5_start = min(read.reference_start, read.next_reference_start) + 4
-                    right_tn5_end = left_tn5_start + abs(read.template_length) - 5
+                    left_tn5_start = min(read.reference_start, read.next_reference_start) + corr_left
+                    right_tn5_end = left_tn5_start + abs(read.template_length) + corr_right
                     if insert_size:
                         insert_size_calc.append(np.abs(right_tn5_end - left_tn5_start))
                         number_reads += 1
@@ -654,7 +662,7 @@ def blacklist_reads(data, bl, chrom, start, length):
 
 # ######################################################################
 # FILE METRICS
-def frip_sn(annot, spec='mouse', file=None):
+def frip_sn(annot, spec='mouse', file=None, dnase=False):
 
     # Validate Species
     chroma_root = os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
@@ -687,7 +695,7 @@ def frip_sn(annot, spec='mouse', file=None):
 
     # Collect Reads Reference Chromosome
     reads, ins, reads_r = chr_reads(file, reference_chromosome, 1,
-                                    chrom_lens[reference_chromosome], insert_size=True)
+                                    chrom_lens[reference_chromosome], insert_size=True, dnase=dnase)
 
     # Count Fraction of Tn5 Binding Events in Peaks
     frip_count = 0.

@@ -1,44 +1,65 @@
 #!/usr/bin/env python
 
+from ChromA import data_handle as dh
+from ChromA import __version__
 from ChromA import models
 from ChromA import states
-from ChromA import data_handle as dh
 import numpy as np
 import logging
 import argparse
+import sys
 import os
-__version__ = '0.0.5'
 
 
-if __name__ == '__main__':
+def main(command_line=None):
     # #############################################
     # #############################################
     # ARGUMENT PARSER
-    parser = argparse.ArgumentParser(description='Chrom')
-    parser.add_argument('-i', '--input', nargs='+', action='store', dest='filename', type=str, required=True,
-                        help='Bam or tsv files containing reads from ATACseq experiment (Required)')
-    parser.add_argument('-sb', '--saveBedFile', action='store', dest='save_bed', type=str, required=True,
-                        default=None, help='save bedfile. Input path to save (default is False).')
-    parser.add_argument('-reg', '--regions', action='store', dest='regions', type=bool, required=False,
-                        default=False, help='Parse reads on selected regions (Optional)')
-    parser.add_argument('-it', '--iterations', action='store', dest='iterations', type=int, required=False,
-                        default=20, help='Number of iterations to fit the algorithm (default = 10, optional)')
+    parser = argparse.ArgumentParser(description='ChromA')
+    subparsers = parser.add_subparsers(help='help for subcommand')
 
-    parser.add_argument('-spec', '--species', action='store', dest='species', type=str, required=False,
-                        default='mouse', choices=['mouse', 'human', 'fly'],
-                        help='Genome Species.(default = mouse, optional)')
-    parser.add_argument('-bl', '--blacklisted', action='store', dest='blacklisted', type=bool, required=False,
-                        default=True, help='Remove Blacklisted peaks. (default is True).')
+    parser_dnase = subparsers.add_parser('dnase', help='Count reads in peaks.')
+    parser_dnase.add_argument('-i', '--input', nargs='+', action='store', dest='filename', type=str, required=True,
+                              help='Bam or tsv files containing reads from ATACseq experiment (Required)')
+    parser_dnase.add_argument('-sb', '--saveBedFile', action='store', dest='save_bed', type=str, required=True,
+                              default=None, help='save bedfile. Input path to save (default is False).')
+    parser_dnase.add_argument('-reg', '--regions', action='store', dest='regions', type=bool, required=False,
+                              default=False, help='Parse reads on selected regions (Optional)')
+    parser_dnase.add_argument('-it', '--iterations', action='store', dest='iterations', type=int, required=False,
+                              default=20, help='Number of iterations to fit the algorithm (default = 10, optional)')
 
-    parser.add_argument('-nome', '--no-metrics', action='store', dest='no_metrics', type=bool, required=False,
-                        default=False, help='Flag to Compute Metrics. (default is True).')
+    parser_dnase.add_argument('-spec', '--species', action='store', dest='species', type=str, required=False,
+                              default='mouse', choices=['mouse', 'human', 'fly'],
+                              help='Genome Species.(default = mouse, optional)')
+    parser_dnase.add_argument('-bl', '--blacklisted', action='store', dest='blacklisted', type=bool, required=False,
+                              default=True, help='Remove Blacklisted peaks. (default is True).')
+    parser_dnase.add_argument('-nome', '--no-metrics', action='store', dest='no_metrics', type=bool, required=False,
+                              default=False, help='Flag to Compute Metrics. (default is True).')
+    parser_dnase.set_defaults(dnase=True)
+
+    parser_atac = subparsers.add_parser('atac', help='Run ChromA for ATAC experiment.')
+    parser_atac.add_argument('-i', '--input', nargs='+', action='store', dest='filename', type=str, required=True,
+                             help='Bam or tsv files containing reads from ATACseq experiment (Required)')
+    parser_atac.add_argument('-sb', '--saveBedFile', action='store', dest='save_bed', type=str, required=True,
+                             default=None, help='save bedfile. Input path to save (default is False).')
+    parser_atac.add_argument('-reg', '--regions', action='store', dest='regions', type=bool, required=False,
+                             default=False, help='Parse reads on selected regions (Optional)')
+    parser_atac.add_argument('-it', '--iterations', action='store', dest='iterations', type=int, required=False,
+                             default=20, help='Number of iterations to fit the algorithm (default = 10, optional)')
+    parser_atac.add_argument('-bl', '--blacklisted', action='store', dest='blacklisted', type=bool, required=False,
+                             default=True, help='Remove Blacklisted peaks. (default is True).')
+    parser_atac.add_argument('-nome', '--no-metrics', action='store', dest='no_metrics', type=bool, required=False,
+                             default=False, help='Flag to Compute Metrics. (default is True).')
+    parser_atac.add_argument('-spec', '--species', action='store', dest='species', type=str, required=False,
+                             default='mouse', choices=['mouse', 'human', 'fly'],
+                             help='Genome Species.(default = mouse, optional)')
+    parser_atac.set_defaults(dnase=False)
+
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s {version}'.format(version=__version__))
     parser.add_argument('-ve', '--verbose', action='store', dest='verbose_level', type=str, required=False,
                         default='1', help='verbose level. 1 display messages, 0 omit them (default is 0).')
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s {version}'.format(version=__version__))
-    options = parser.parse_args()
-    # #############################################
-    # #############################################
 
+    options = parser.parse_args(command_line)
     # #############################################
     # #############################################
     # BUILDING LOGGER
@@ -68,7 +89,8 @@ if __name__ == '__main__':
     hsmm = models.BayesianHsmmExperimentMultiProcessing(states=state_list, top_states=top_states,
                                                         compute_regions=options.regions,
                                                         pi_prior=pi_prior, tmat_prior=tmat_prior,
-                                                        blacklisted=options.blacklisted)
+                                                        blacklisted=options.blacklisted,
+                                                        dnase=options.dnase)
     hsmm.train(filename=options.filename, species=options.species, iterations=options.iterations)
     # #############################################
     # #############################################
@@ -84,3 +106,7 @@ if __name__ == '__main__':
             dh.metrics(filename=options.filename, annotations=hsmm.peaks, species=options.species)
     # #############################################
     # #############################################
+
+
+if __name__ == '__main__':
+    main()

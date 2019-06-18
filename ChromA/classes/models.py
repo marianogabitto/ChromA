@@ -24,10 +24,11 @@ eps = 1e-9
 
 class BayesianHsmmExperimentMultiProcessing:
     def __init__(self, states, pi_prior, tmat_prior, data=None, length=None, start=None, chrom=None,
-                 blacklisted=True, save=False, top_states=None, compute_regions=False):
+                 blacklisted=True, save=False, top_states=None, compute_regions=False, dnase=False):
 
         self.logger = logging.getLogger()
         self.species = None
+        self.dnase = False
 
         # Data Containers, can be None and updated during Runtime
         self.data = data
@@ -117,7 +118,8 @@ class BayesianHsmmExperimentMultiProcessing:
         self.logger.info("Training on Regions")
         results = []
         chromosome = [Trainer.remote(-1, filename, species, self.blacklisted, self.states, self.prior,
-                                     self.top_states, logger=logging.getLogger().getEffectiveLevel(), log_file=name)]
+                                     self.top_states, logger=logging.getLogger().getEffectiveLevel(),
+                                     log_file=name, dnase=self.dnase)]
         results.append(chromosome[0].train.remote(iterations=50, msg="Th17 Regions: "))
 
         # Collect Results
@@ -181,7 +183,8 @@ class BayesianHsmmExperimentMultiProcessing:
                     self.logger.info("chr{}: Submitting job to Queue".format(chr_))
                     chromosome.append(Trainer.remote(chr_, filename, species, self.blacklisted, self.states, self.prior,
                                                      self.top_states, pi=posterior.pi, tmat=posterior.tmat,
-                                                     logger=logging.getLogger().getEffectiveLevel(), log_file=name))
+                                                     logger=logging.getLogger().getEffectiveLevel(), log_file=name,
+                                                     dnase=self.dnase))
                     results.append(chromosome[i_].train.remote(iterations=iterations, msg="chr{}: ".format(chr_)))
                     chr_list.remove(chr_)
 
@@ -274,7 +277,7 @@ class BayesianHsmmExperimentMultiProcessing:
 @ray.remote(num_cpus=1)
 class Trainer(object):
     def __init__(self, chr_, filename, species, blacklisted, states, prior,
-                 top_states=None, pi=None, tmat=None, logger=None, log_file=None):
+                 top_states=None, pi=None, tmat=None, logger=None, log_file=None, dnase=False):
         # Init Logging Module
         if logger is None:
             data_handle.build_logger('0', filename=log_file, supress=True)
@@ -304,12 +307,12 @@ class Trainer(object):
         self.n_exp = len(filename)
         if chr_ == -1:
             self.logger.info("Regions: Fetching Data")
-            data, length, start, chrom = data_handle.regions_th17(filename=filename, species=species)
+            data, length, start, chrom = data_handle.regions_th17(filename=filename, species=species, dnase=dnase)
         else:
             chrom_str = "chr" + chr_.__str__()
             self.logger.info(chrom_str + ": Fetching Data")
             data, length, start, chrom = data_handle.regions_chr(filename=filename, chromosome=chrom_str,
-                                                                 species=species, blacklisted=blacklisted)
+                                                                 species=species, blacklisted=blacklisted, dnase=dnase)
 
         self.data = data
         self.length = length
