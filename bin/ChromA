@@ -60,6 +60,9 @@ def main(command_line=None):
                         default='1', help='verbose level. 1 display messages, 0 omit them (default is 0).')
 
     options = parser.parse_args(command_line)
+    if not hasattr(options, 'filename'):
+        parser.print_help()
+        sys.exit()
     # #############################################
     # #############################################
     # BUILDING LOGGER
