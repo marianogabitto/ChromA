@@ -129,7 +129,6 @@ class BayesianHsmmExperimentMultiProcessing:
             self.annotations_chr.append(res[1][l_])
             self.annotations_start.append(res[2][l_])
             self.annotations_length.append(res[3][l_])
-
         posterior = ray.get(chromosome[0].get_posterior.remote())
         self.elbo = ray.get(chromosome[0].get_elbo.remote())
 
@@ -171,7 +170,7 @@ class BayesianHsmmExperimentMultiProcessing:
                 self.logger.info('Running on human genome. 22 Chroms')
             elif species == 'fly':
                 self.species = 'fly'
-                chr_list = ['2L', '2R','3L', '3R', '4', 'X', 'Y']
+                chr_list = ['2L', '2R', '3L', '3R', '4', 'X', 'Y']
                 self.logger.info('Running on fly genome. 7 Chroms')
 
             # Run Training in parallel
@@ -235,6 +234,22 @@ class BayesianHsmmExperimentMultiProcessing:
             self.peaks = peaks
 
         self.logger.info("Saved Bed File. ")
+
+    def posterior_state(self, fname=os.getcwd()):
+        chr_list = np.unique(self.annotations_chr)
+        out = []
+        for i_, c_ in enumerate(chr_list):
+            out_s = []
+            out_st = []
+            out_l = []
+            idx_c = np.where(np.array(self.annotations_chr) == c_)[0]
+            for idx_reg in idx_c:
+                out_s.append(self.annotations[idx_reg])
+                out_st.append(self.annotations_start[idx_reg])
+                out_l.append(self.annotations_length[idx_reg])
+            out.append([c_, out_st, out_l, out_s])
+        path, file = os.path.split(fname)
+        np.save(os.path.join(path, file + '.posterior_state.npy'), np.array(out))
 
     def validate_regions(self):
         # Get Logger

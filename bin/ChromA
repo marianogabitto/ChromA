@@ -58,6 +58,9 @@ def main(command_line=None):
     parser.add_argument('-v', '--version', action='version', version='%(prog)s {version}'.format(version=__version__))
     parser.add_argument('-ve', '--verbose', action='store', dest='verbose_level', type=str, required=False,
                         default='1', help='verbose level. 1 display messages, 0 omit them (default is 0).')
+    parser.add_argument('-sp', '--posterior', action='store', dest='save_post', type=bool, required=False,
+                        default=False,
+                        help='Save Posterior State. This is memory intensive. (default=False, Not Required). ')
 
     options = parser.parse_args(command_line)
     if not hasattr(options, 'filename'):
@@ -92,8 +95,7 @@ def main(command_line=None):
     hsmm = models.BayesianHsmmExperimentMultiProcessing(states=state_list, top_states=top_states,
                                                         compute_regions=options.regions,
                                                         pi_prior=pi_prior, tmat_prior=tmat_prior,
-                                                        blacklisted=options.blacklisted,
-                                                        dnase=options.dnase)
+                                                        blacklisted=options.blacklisted, dnase=options.dnase)
     hsmm.train(filename=options.filename, species=options.species, iterations=options.iterations)
     # #############################################
     # #############################################
@@ -101,8 +103,12 @@ def main(command_line=None):
     # #############################################
     # #############################################
     # SAVING INTO BEDFILE OR PICKLE
+    if options.save_post:
+        logger.info("Saving Posterior State.")
+        hsmm.posterior_state(fname=options.save_bed)
+
     if options.save_bed is not None:
-        logger.info("Saving Bed File")
+        logger.info("Saving Bed File.")
         path, filename = os.path.split(options.save_bed)
         hsmm.save_bedfile(path=path, name=filename)
         if (not options.no_metrics) and (not options.dnase):
