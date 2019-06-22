@@ -16,7 +16,7 @@ def main(command_line=None):
     # #############################################
     # ARGUMENT PARSER
     parser = argparse.ArgumentParser(description='ChromA')
-    subparsers = parser.add_subparsers(help='help for subcommand')
+    subparsers = parser.add_subparsers(help='help for sub-command')
 
     parser_dnase = subparsers.add_parser('dnase', help='Count reads in peaks.')
     parser_dnase.add_argument('-i', '--input', nargs='+', action='store', dest='filename', type=str, required=True,
@@ -71,7 +71,7 @@ def main(command_line=None):
     logger = logging.getLogger()
 
     # VALIDATE INPUTS
-    dh.validate_inputs(files=options.filename, species=options.species)
+    dh.validate_inputs(files=options.filename, species=options.species, dnase=options.dnase)
     # #############################################
     # #############################################
 
@@ -105,7 +105,7 @@ def main(command_line=None):
         logger.info("Saving Bed File")
         path, filename = os.path.split(options.save_bed)
         hsmm.save_bedfile(path=path, name=filename)
-        if not options.no_metrics:
+        if (not options.no_metrics) and (not options.dnase):
             dh.metrics(filename=options.filename, annotations=hsmm.peaks, species=options.species)
     # #############################################
     # #############################################

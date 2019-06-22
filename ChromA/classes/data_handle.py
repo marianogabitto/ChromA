@@ -311,16 +311,17 @@ def regions_chr(filename=None, chromosome=None, species='mouse', blacklisted=Tru
 
 # ######################################################################
 # DATA PROCESSING ROUTINES
-def chr_reads(files, chrom, start, end, insert_size=False, dnase=False):
+def chr_reads(files, chrom, start, end, insert_size=False, dnase=False, map_quality=0):
     # Correct Reads for atac assay or dnase
     if dnase is True:
         corr_right = 0
         corr_left = 0
+        insert_size = False
     else:
         corr_right = -5
         corr_left = 4
 
-    length = int(end - start)
+    length = np.int64(end - start)
     n_files = len(files)
     out = np.zeros((length, n_files))
     insert_size_calc = []
@@ -330,21 +331,34 @@ def chr_reads(files, chrom, start, end, insert_size=False, dnase=False):
         if f_[-3:] == 'bam':
             sam_file = pysam.AlignmentFile(f_)
             for read in sam_file.fetch(chrom, start, end):
-                if not read.is_paired or not read.is_proper_pair or read.mate_is_unmapped \
-                        or read.is_duplicate or read.mapping_quality < 30:
-                    continue
+                if dnase is False:
+                    # Assume Reads are Paired-Ended
+                    if not read.is_paired or not read.is_proper_pair or read.mate_is_unmapped \
+                            or read.is_duplicate or read.mapping_quality < map_quality:
+                        continue
+                    else:
+                        left_tn5_start = min(read.reference_start, read.next_reference_start) + corr_left
+                        right_tn5_end = left_tn5_start + abs(read.template_length) + corr_right
+                        if insert_size:
+                            insert_size_calc.append(np.abs(right_tn5_end - left_tn5_start))
+                            number_reads += 1
+
+                        if (left_tn5_start < end - 1) and (left_tn5_start > start + 1):
+                            out[left_tn5_start - int(start), i_] += 1
+
+                        if (right_tn5_end < end - 1) and (right_tn5_end > start + 1):
+                            out[right_tn5_end - int(start), i_] += 1
                 else:
-                    left_tn5_start = min(read.reference_start, read.next_reference_start) + corr_left
-                    right_tn5_end = left_tn5_start + abs(read.template_length) + corr_right
-                    if insert_size:
-                        insert_size_calc.append(np.abs(right_tn5_end - left_tn5_start))
-                        number_reads += 1
-
-                    if (left_tn5_start < end - 1) and (left_tn5_start > start + 1):
-                        out[left_tn5_start - int(start), i_] += 1
-
-                    if (right_tn5_end < end - 1) and (right_tn5_end > start + 1):
-                        out[right_tn5_end - int(start), i_] += 1
+                    # Assume Reads are Single-Ended
+                    if read.mapping_quality < map_quality:
+                        continue
+                    else:
+                        if read.is_reverse:
+                            if (read.reference_end < end - 1) and (read.reference_end > start + 1):
+                                out[read.reference_end - int(start), i_] += 1
+                        else:
+                            if (read.reference_start < end - 1) and (read.reference_start > start + 1):
+                                out[read.reference_start - int(start), i_] += 1
 
         else:
             path, name = os.path.split(f_)

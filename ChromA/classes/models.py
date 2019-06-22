@@ -13,7 +13,7 @@ import matplotlib
 gui_env = ['Agg', 'TKAgg','GTKAgg','Qt4Agg','WXAgg']
 for gui in gui_env:
     try:
-        matplotlib.use(gui,warn=False, force=True)
+        matplotlib.use(gui, warn=False, force=True)
         from matplotlib import pyplot as plt
         break
     except:
@@ -28,7 +28,7 @@ class BayesianHsmmExperimentMultiProcessing:
 
         self.logger = logging.getLogger()
         self.species = None
-        self.dnase = False
+        self.dnase = dnase
 
         # Data Containers, can be None and updated during Runtime
         self.data = data
