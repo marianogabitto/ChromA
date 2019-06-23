@@ -249,8 +249,6 @@ class BayesianHsmmExperimentMultiProcessing:
                 out_l.append(self.annotations_length[idx_reg])
             out.append([c_, out_st, out_l, out_s])
         path, file = os.path.split(fname)
-        print(path, file)
-        print(np.array(out).shape)
         np.save(os.path.join(path, file + '.posterior_state.npy'), np.array(out))
 
     def validate_regions(self):

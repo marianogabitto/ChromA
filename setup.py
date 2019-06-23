@@ -26,7 +26,7 @@ setup(
       install_requires=[
                         'matplotlib',
                         'seaborn',
-                        'numpy',
+                        'numpy>=1.16.2',
                         'pysam',
                         'ray',
                         'scipy',
