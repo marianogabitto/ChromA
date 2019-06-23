@@ -10,7 +10,7 @@ import ray
 import os
 
 import matplotlib
-gui_env = ['Agg', 'TKAgg','GTKAgg','Qt4Agg','WXAgg']
+gui_env = ['TKAgg', 'Agg', 'GTKAgg', 'Qt4Agg', 'WXAgg']
 for gui in gui_env:
     try:
         matplotlib.use(gui, warn=False, force=True)
@@ -19,7 +19,6 @@ for gui in gui_env:
     except:
         continue
 from matplotlib.backends.backend_pdf import PdfPages
-eps = 1e-9
 
 
 class BayesianHsmmExperimentMultiProcessing:
@@ -244,7 +243,7 @@ class BayesianHsmmExperimentMultiProcessing:
             out_l = []
             idx_c = np.where(np.array(self.annotations_chr) == c_)[0]
             for idx_reg in idx_c:
-                out_s.append(self.annotations[idx_reg])
+                out_s.append(np.float16(self.annotations[idx_reg][:, 1]))
                 out_st.append(self.annotations_start[idx_reg])
                 out_l.append(self.annotations_length[idx_reg])
             out.append([c_, out_st, out_l, out_s])
