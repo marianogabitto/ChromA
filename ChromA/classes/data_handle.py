@@ -104,10 +104,9 @@ def validate_inputs(files=None, species=None, dnase=False):
         if f_[-3:] == 'bam':
             try:
                 if species == 'fly':
-                    _ = chr_reads([f_], 'chr3R', 5624047, 5625400, dnase=dnase)
+                    chr_reads([f_], 'chr3R', 5624047, 5625400, dnase=dnase)
                 else:
-                    test = chr_reads([f_], 'chr1', 63980000, 64080000 + 100, dnase=dnase)
-                    print(np.sum(test))
+                    chr_reads([f_], 'chr1', 63980000, 64080000 + 100, dnase=dnase)
             except:
                 logging.error("ERROR:Could not read file as BAM format. {}".format(f_))
                 raise SystemExit
@@ -314,7 +313,6 @@ def regions_chr(filename=None, chromosome=None, species='mouse', blacklisted=Tru
 # DATA PROCESSING ROUTINES
 def chr_reads(files, chrom, start, end, insert_size=False, dnase=False, map_quality=0):
     # Correct Reads for atac assay or dnase
-    print('dnase', dnase)
     if dnase is True:
         corr_right = 0
         corr_left = 0
@@ -332,8 +330,7 @@ def chr_reads(files, chrom, start, end, insert_size=False, dnase=False, map_qual
     for i_, f_ in enumerate(files):
         if f_[-3:] == 'bam':
             sam_file = pysam.AlignmentFile(f_)
-            for l_, read in enumerate(sam_file.fetch(chrom, start, end)):
-                print(l_)
+            for read in sam_file.fetch(chrom, start, end):
                 if dnase is False:
                     # Assume Reads are Paired-Ended
                     if not read.is_paired or not read.is_proper_pair or read.mate_is_unmapped \
@@ -353,7 +350,6 @@ def chr_reads(files, chrom, start, end, insert_size=False, dnase=False, map_qual
                             out[right_tn5_end - int(start), i_] += 1
                 else:
                     # Assume Reads are Single-Ended
-                    print("dnase")
                     if read.mapping_quality < map_quality:
                         continue
                     else:
