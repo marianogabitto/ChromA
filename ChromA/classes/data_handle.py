@@ -104,9 +104,10 @@ def validate_inputs(files=None, species=None, dnase=False):
         if f_[-3:] == 'bam':
             try:
                 if species == 'fly':
-                    chr_reads([f_], 'chr3R', 5624047, 5625400, dnase=dnase)
+                    _ = chr_reads([f_], 'chr3R', 5624047, 5625400, dnase=dnase)
                 else:
-                    chr_reads([f_], 'chr1', 3e7, 3e7 + 100, dnase=dnase)
+                    test = chr_reads([f_], 'chr1', 63980000, 64080000 + 100, dnase=dnase)
+                    print(np.sum(test))
             except:
                 logging.error("ERROR:Could not read file as BAM format. {}".format(f_))
                 raise SystemExit
