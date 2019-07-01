@@ -101,6 +101,7 @@ def validate_inputs(files=None, species=None, dnase=False):
         if not os.path.isfile(f_):
             logging.error("ERROR:File does not exists. {}".format(f_))
             raise SystemExit
+        # TRY TO VALIDATE BAM
         if f_[-3:] == 'bam':
             try:
                 if species == 'fly':
@@ -110,6 +111,17 @@ def validate_inputs(files=None, species=None, dnase=False):
             except:
                 logging.error("ERROR:Could not read file as BAM format. {}".format(f_))
                 raise SystemExit
+        # TRY TO VALIDATE TABIX FILE
+        elif f_[-3:] == '.gz':
+            try:
+                if species == 'fly':
+                    chr_reads([f_], 'chr3R', 5624047, 5625400, dnase=dnase)
+                else:
+                    chr_reads([f_], 'chr1', 63980000, 64080000 + 100, dnase=dnase)
+            except:
+                logging.error("ERROR:Could not read file as TABIX format. {}".format(f_))
+                raise SystemExit
+        # TRY TO VALIDATE AS BED OR TSV
         else:
             try:
                 with open(f_, 'r') as f:
@@ -125,6 +137,7 @@ def validate_inputs(files=None, species=None, dnase=False):
                 path, name = os.path.split(f_)
                 if not os.path.isfile(os.path.join(path, '{}_reads.npy'.format(name))):
                     logging.info("Preprocessing TSV file: {}".format(f_))
+                    logging.info("Index file as tabix for accelerated performance")
                     with open(f_, 'r') as f:
                         max_size = len(f.readlines())
 
@@ -328,6 +341,7 @@ def chr_reads(files, chrom, start, end, insert_size=False, dnase=False, map_qual
     number_reads = 0
 
     for i_, f_ in enumerate(files):
+        # BAM FILE
         if f_[-3:] == 'bam':
             sam_file = pysam.AlignmentFile(f_)
             for read in sam_file.fetch(chrom, start, end):
@@ -360,6 +374,25 @@ def chr_reads(files, chrom, start, end, insert_size=False, dnase=False, map_qual
                             if (read.reference_start < end - 1) and (read.reference_start > start + 1):
                                 out[read.reference_start - int(start), i_] += 1
 
+        # TABIX FILE
+        elif f_[-3:] == '.gz':
+            sam_file = pysam.TabixFile(f_)
+            for r_ in sam_file.fetch(chrom, start, end):
+                read = r_.split('\t')
+                left_tn5_start = int(read[1]) + corr_left
+                right_tn5_end = int(read[2]) + corr_right
+
+                if insert_size:
+                    insert_size_calc.append(np.abs(right_tn5_end - left_tn5_start))
+                    number_reads += 1
+
+                if (left_tn5_start < end - 1) and (left_tn5_start > start + 1):
+                    out[left_tn5_start - int(start), i_] += 1
+
+                if (right_tn5_end < end - 1) and (right_tn5_end > start + 1):
+                    out[right_tn5_end - int(start), i_] += 1
+
+        # TSV/BED FILE
         else:
             path, name = os.path.split(f_)
 
