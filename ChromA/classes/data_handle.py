@@ -592,8 +592,21 @@ def read_bed(bed_file):
     return interval
 
 
-def write_bed(filename, data, start=None, end=None, ext=100, merge=500):
-    # Format Data
+def write_bed(filename, data, start=None, end=None, ext=100, merge=500, filterpeaks=50):
+    """
+    Flexible Routine to Write Bed Files. Can Filter by size, Extends, Merge closeby peaks.
+
+    :param filename:
+    :param data:
+    :param start:
+    :param end:
+    :param ext:
+    :param merge:
+    :param filterpeaks:
+    :return:
+    """
+
+    # Format Input Data
     if start is None and end is None:
         chrom = data[:, 0]
         start = np.int32(data[:, 1]) - ext
@@ -601,12 +614,20 @@ def write_bed(filename, data, start=None, end=None, ext=100, merge=500):
     else:
         chrom = data
 
-    # Merge Close Peaks
+    # Filter Peaks by size
+    idx = np.where(np.abs(end - start) < filterpeaks)[0]
+    if idx.shape[0] > 0:
+        for i_ in reversed(idx):
+            end = np.delete(end, i_)
+            start = np.delete(start, i_)
+            chrom = np.delete(chrom, i_)
+
+    # Merge Closeby Peaks
     idx = np.where(np.abs(start[1:] - end[:-1]) < merge)[0]
     if idx.shape[0] > 0:
         for i_ in reversed(idx):
             # TODO: Verify both chromosomes are the same.
-            # This is highly unlikely not to occur
+            # This is highly unlikely to occur
             end[i_] = end[i_ + 1]
         end = np.delete(end, idx + 1)
         start = np.delete(start, idx + 1)
@@ -622,6 +643,15 @@ def write_bed(filename, data, start=None, end=None, ext=100, merge=500):
 
 
 def bed_result(filename, data, start, chrom, threshold=0.5):
+    """
+    Converts posterior into a series of intervals and writes them into bed.
+    :param filename: Output Filename
+    :param data: Posterior. [data] = [# Datasets]
+    :param start:
+    :param chrom:
+    :param threshold:
+    :return:
+    """
 
     # Initial Parameters
     n_datasets = len(data)
