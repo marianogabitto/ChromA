@@ -215,22 +215,9 @@ class BayesianHsmmExperimentMultiProcessing:
             else:
                 regs.append(self.annotations[l_][:, 1])
         peaks = data_handle.bed_result(os.path.join(path, name) + '_allpeaks.bed',
-                                       regs, self.annotations_start, chromm, threshold=0.05)
+                                       regs, self.annotations_start, chromm, threshold=0.05,
+                                       bedext=0, bedmerge=500, filterpeaks=0)
         self.peaks = peaks
-
-        # Save Bed-File High Signal State
-        regs = []
-        if self.annotations[0].shape[1] > 2:
-            for l_ in np.arange(len(self.annotations)):
-                regs.append(self.annotations[l_][:, 2])
-            _ = data_handle.bed_result(os.path.join(path, name) + '_highpeaks.bed',
-                                       regs, self.annotations_start, chromm, threshold=0.05)
-
-        # Save Bed-File Broad Signal
-        if self.annotations[0].shape[1] > 2:
-            peaks = data_handle.bed_result_broad_peaks(os.path.join(path, name) + '_broadpeaks.bed',
-                                                       self.annotations, self.annotations_start, chromm, threshold=0.05)
-            self.peaks = peaks
 
         self.logger.info("Saved Bed File. ")
 

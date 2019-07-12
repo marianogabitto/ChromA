@@ -86,13 +86,15 @@ def build_states(typ='low', filename=None, r=None):
             top_states.append(top_open2_state)
 
     else:
-        logger.info("Running with 2 States: r=5, r=3")
+        r1 = 5
+        r2 = 2
+        logger.info("Running with 2 States: r={}, r={}".format(r1, r2))
         pi_prior = np.array([1000, 1])
         tmat_prior = np.array([[0, 1],
                                [1, 0]])
         state_list = []
-        closed_state = NegativeBinomialGEO(r=5, p=1e-4, cut0=1, cut1=50)
-        open_state = NegativeBinomialGEO(r=3, p=1e-4, cut0=20, cut1=10)
+        closed_state = NegativeBinomialGEO(r=r1, p=1e-4, cut0=1, cut1=50)
+        open_state = NegativeBinomialGEO(r=r2, p=1e-4, cut0=20, cut1=10)
         state_list.append(closed_state)
         state_list.append(open_state)
 
@@ -102,8 +104,8 @@ def build_states(typ='low', filename=None, r=None):
                                   [1, 100]])
 
             top_states = list()
-            top_closed_state = TopStateNegativeBinomial(r=5, p=1e-4, toptmat0=top_tmat0, order=0)
-            top_open_state = TopStateNegativeBinomial(r=3, p=1e-4, toptmat0=top_tmat0, order=1)
+            top_closed_state = TopStateNegativeBinomial(r=r1, p=1e-4, toptmat0=top_tmat0, order=0)
+            top_open_state = TopStateNegativeBinomial(r=r2, p=1e-4, toptmat0=top_tmat0, order=1)
             top_states.append(top_closed_state)
             top_states.append(top_open_state)
 

@@ -364,15 +364,25 @@ def chr_reads(files, chrom, start, end, insert_size=False, dnase=False, map_qual
                             out[right_tn5_end - int(start), i_] += 1
                 else:
                     # Assume Reads are Single-Ended
-                    if read.mapping_quality < map_quality:
-                        continue
-                    else:
+                    if read.mapping_quality > map_quality:
+                        # Shift Reads to Interval
+                        st = np.min([read.reference_start, read.reference_end]) - int(start)
+                        nd = np.max([read.reference_start, read.reference_end]) - int(start)
+
+                        # Clip if one end is outside interval
+                        st = np.max([st, 0])
+                        nd = np.min([nd, end - int(start)])
+
+                        out[st:(st+5), i_] += 1
+                        out[(nd-5):nd, i_] += 1
+                        """
                         if read.is_reverse:
                             if (read.reference_end < end - 1) and (read.reference_end > start + 1):
                                 out[read.reference_end - int(start), i_] += 1
                         else:
                             if (read.reference_start < end - 1) and (read.reference_start > start + 1):
                                 out[read.reference_start - int(start), i_] += 1
+                        """
 
         # TABIX FILE
         elif f_[-3:] == '.gz':
@@ -592,7 +602,7 @@ def read_bed(bed_file):
     return interval
 
 
-def write_bed(filename, data, start=None, end=None, ext=100, merge=500, filterpeaks=50):
+def write_bed(filename, data, start=None, end=None, ext=100, merge=500, filterpeaks=25):
     """
     Flexible Routine to Write Bed Files. Can Filter by size, Extends, Merge closeby peaks.
 
@@ -642,14 +652,17 @@ def write_bed(filename, data, start=None, end=None, ext=100, merge=500, filterpe
             f.write("chr" + str(chrom[i]) + "\t" + str(int(start[i])) + "\t" + str(int(end[i])) + "\n")
 
 
-def bed_result(filename, data, start, chrom, threshold=0.5):
+def bed_result(filename, data, start, chrom, threshold=0.5, bedext=100, bedmerge=500, filterpeaks=25):
     """
     Converts posterior into a series of intervals and writes them into bed.
-    :param filename: Output Filename
-    :param data: Posterior. [data] = [# Datasets]
+    :param filename:
+    :param data:
     :param start:
     :param chrom:
     :param threshold:
+    :param bedext:
+    :param bedmerge:
+    :param filterpeaks:
     :return:
     """
 
@@ -676,52 +689,13 @@ def bed_result(filename, data, start, chrom, threshold=0.5):
     if len(out_regions) > 0:
         reg_out = np.concatenate(out_regions)
         # write bed
-        write_bed(filename, data=np.array(chr_l), start=reg_out[:, 0], end=reg_out[:, 1])
+        write_bed(filename, data=np.array(chr_l), start=reg_out[:, 0], end=reg_out[:, 1],
+                  ext=bedext, merge=bedmerge, filterpeaks=filterpeaks)
     else:
         print("No regions to write to Bed File.")
         reg_out = []
 
     return reg_out
-
-
-def bed_result_broad_peaks(filename, data, start, chrom, threshold=0.5):
-
-    if data[0].shape[1] < 2:
-        print("Not enough states to annotate bed file.")
-        return
-
-    def get_overlap(a, b):
-        return max(0, min(a[1], b[1]) - max(a[0], b[0]))
-
-    # Initial Parameters
-    n_datasets = len(data)
-    out_regions = []
-
-    # Loop through datasets
-    for l_ in np.arange(n_datasets):
-        w_data2 = data[l_][:, 2] > threshold
-        fst1 = np.where(w_data2 & ~ np.insert(w_data2, 0, 0)[:-1])[0]
-        lst1 = np.where(w_data2 & ~ np.append(w_data2, 0)[1:])[0]
-        fst1.append(lst1[-1], 0) if lst1.shape[0] > fst1.shape[0] else 0
-
-        w_data12 = data[l_][:, 1:].sum(axis=1) > threshold
-        fst12 = np.where(w_data12 & ~ np.insert(w_data12, 0, 0)[:-1])[0]
-        lst12 = np.where(w_data12 & ~ np.append(w_data12, 0)[1:])[0]
-        fst12.append(lst12[-1], 0) if lst12.shape[0] > fst12.shape[0] else 0
-
-        # Format Bed
-        num_reg = fst12.shape[0]
-        num_reg1 = fst1.shape[0]
-        for i_ in np.arange(num_reg):
-            for r_ in np.arange(num_reg1):
-                if get_overlap([fst12[i_], lst12[i_]], [fst1[r_], lst1[r_]]) > 0:
-                    out_regions.append([int(chrom[l_]), start[l_] + fst12[i_], start[l_] + lst12[i_] + 1])
-                    break
-
-    # write bed
-    write_bed(filename, np.array(out_regions))
-
-    return np.array(out_regions)
 
 
 def blacklist_reads(data, bl, chrom, start, length):
