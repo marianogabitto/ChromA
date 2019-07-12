@@ -23,11 +23,11 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 class BayesianHsmmExperimentMultiProcessing:
     def __init__(self, states, pi_prior, tmat_prior, data=None, length=None, start=None, chrom=None,
-                 blacklisted=True, save=False, top_states=None, compute_regions=False, dnase=False):
+                 blacklisted=True, save=False, top_states=None, compute_regions=False, datatype='atac'):
 
         self.logger = logging.getLogger()
         self.species = None
-        self.dnase = dnase
+        self.datatype = datatype
 
         # Data Containers, can be None and updated during Runtime
         self.data = data
@@ -118,7 +118,7 @@ class BayesianHsmmExperimentMultiProcessing:
         results = []
         chromosome = [Trainer.remote(-1, filename, species, self.blacklisted, self.states, self.prior,
                                      self.top_states, logger=logging.getLogger().getEffectiveLevel(),
-                                     log_file=name, dnase=self.dnase)]
+                                     log_file=name, datatype=self.datatype)]
         results.append(chromosome[0].train.remote(iterations=50, msg="Th17 Regions: "))
 
         # Collect Results
@@ -182,7 +182,7 @@ class BayesianHsmmExperimentMultiProcessing:
                     chromosome.append(Trainer.remote(chr_, filename, species, self.blacklisted, self.states, self.prior,
                                                      self.top_states, pi=posterior.pi, tmat=posterior.tmat,
                                                      logger=logging.getLogger().getEffectiveLevel(), log_file=name,
-                                                     dnase=self.dnase))
+                                                     datatype=self.datatype))
                     results.append(chromosome[i_].train.remote(iterations=iterations, msg="chr{}: ".format(chr_)))
                     chr_list.remove(chr_)
 
@@ -195,7 +195,7 @@ class BayesianHsmmExperimentMultiProcessing:
                         self.annotations_start.append(res[2][l_])
                         self.annotations_length.append(res[3][l_])
 
-    def save_bedfile(self, path, name=None):
+    def save_bedfile(self, path, name=None, thres=0.05, ext=100, merge=500, filterpeaks=0):
         # Format Filename
         if name is None:
             name = "region_"
@@ -215,8 +215,8 @@ class BayesianHsmmExperimentMultiProcessing:
             else:
                 regs.append(self.annotations[l_][:, 1])
         peaks = data_handle.bed_result(os.path.join(path, name) + '_allpeaks.bed',
-                                       regs, self.annotations_start, chromm, threshold=0.05,
-                                       bedext=0, bedmerge=500, filterpeaks=0)
+                                       regs, self.annotations_start, chromm, threshold=thres,
+                                       bedext=ext, bedmerge=merge, filterpeaks=filterpeaks)
         self.peaks = peaks
 
         self.logger.info("Saved Bed File. ")
@@ -278,7 +278,7 @@ class BayesianHsmmExperimentMultiProcessing:
 @ray.remote(num_cpus=1)
 class Trainer(object):
     def __init__(self, chr_, filename, species, blacklisted, states, prior,
-                 top_states=None, pi=None, tmat=None, logger=None, log_file=None, dnase=False):
+                 top_states=None, pi=None, tmat=None, logger=None, log_file=None, datatype='atac'):
         # Init Logging Module
         if logger is None:
             data_handle.build_logger('0', filename=log_file, supress=True)
@@ -306,14 +306,23 @@ class Trainer(object):
 
         # Getting Next Chromosome Data
         self.n_exp = len(filename)
+        if datatype == 'atac':
+            dnase = False
+        elif datatype == 'dnase':
+            dnase = True
+        else:
+            dnase = False
+
         if chr_ == -1:
             self.logger.info("Regions: Fetching Data")
-            data, length, start, chrom = data_handle.regions_th17(filename=filename, species=species, dnase=dnase)
+            data, length, start, chrom = data_handle.regions_th17(filename=filename,
+                                                                  species=species, dnase=dnase)
         else:
             chrom_str = "chr" + chr_.__str__()
             self.logger.info(chrom_str + ": Fetching Data")
             data, length, start, chrom = data_handle.regions_chr(filename=filename, chromosome=chrom_str,
-                                                                 species=species, blacklisted=blacklisted, dnase=dnase)
+                                                                 species=species,
+                                                                 blacklisted=blacklisted, dnase=dnase)
 
         self.data = data
         self.length = length

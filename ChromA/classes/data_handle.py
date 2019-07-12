@@ -90,12 +90,16 @@ def build_logger(verbose_mode, filename=None, supress=False):
     logger_metric.addHandler(mhandler)
 
 
-def validate_inputs(files=None, species=None, dnase=False):
+def validate_inputs(files=None, species=None, datatype='atac'):
 
     logger = logging.getLogger()
     logger.info("Validating Inputs")
     if files is None:
         logging.error("ERROR: No input files")
+    if datatype == 'dnase':
+        dnase = True
+    else:
+        dnase = False
 
     for f_ in files:
         if not os.path.isfile(f_):
