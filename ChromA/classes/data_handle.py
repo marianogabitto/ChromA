@@ -377,8 +377,8 @@ def chr_reads(files, chrom, start, end, insert_size=False, dnase=False, map_qual
                         st = np.max([st, 0])
                         nd = np.min([nd, end - int(start)])
 
-                        out[st:(st+5), i_] += 1
-                        out[(nd-5):nd, i_] += 1
+                        out[st:(st+4), i_] += 1
+                        out[(nd-4):nd, i_] += 1
                         """
                         if read.is_reverse:
                             if (read.reference_end < end - 1) and (read.reference_end > start + 1):

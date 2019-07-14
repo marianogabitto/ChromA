@@ -119,7 +119,7 @@ class BayesianHsmmExperimentMultiProcessing:
         chromosome = [Trainer.remote(-1, filename, species, self.blacklisted, self.states, self.prior,
                                      self.top_states, logger=logging.getLogger().getEffectiveLevel(),
                                      log_file=name, datatype=self.datatype)]
-        results.append(chromosome[0].train.remote(iterations=50, msg="Th17 Regions: "))
+        results.append(chromosome[0].train.remote(iterations=iterations, msg="Th17 Regions: "))
 
         # Collect Results
         res, states = ray.get(results[0])
@@ -163,7 +163,7 @@ class BayesianHsmmExperimentMultiProcessing:
                 self.logger.info('Running on mouse genome. 19 Chroms')
             elif species == 'human':
                 self.species = 'human'
-                chr_list = list(np.arange(1, 22))
+                chr_list = list(np.arange(1, 23))
                 chr_list.append('X')
                 chr_list.append('Y')
                 self.logger.info('Running on human genome. 22 Chroms')
