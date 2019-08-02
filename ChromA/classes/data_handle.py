@@ -4,6 +4,7 @@ import logging
 import pickle
 import pysam
 import copy
+import ray
 import csv
 import os
 
@@ -153,7 +154,7 @@ def validate_inputs(files=None, species=None, datatype='atac'):
                             reads_array[idx][0] = row[0]
                             reads_array[idx][1] = row[1]
                             reads_array[idx][2] = row[2]
-                            reads_array[idx][3] = row[4]
+                            # reads_array[idx][3] = row[4]
                             idx += 1
 
                     np.save(os.path.join(path, '{}_reads.npy'.format(name)), reads_array)
@@ -811,3 +812,140 @@ def metrics(filename, annotations=None, species=None):
             logger.info("Signal To Noise: {0:3.3f}".format(sn))
             logger.info("Insert Size Metric (Ratio MonoNuc to Nuc-Free): {0:3.3f}".format(ins_size))
             logger.info("Number of Reads (Extrapolated from Chromosome 1): {0:5.0e}".format(number_r))
+
+
+# ######################################################################
+# COUNT FRAGMENTS IN PEAKS
+def count_fragments_bed(tsv_file, bed_file, cells_file):
+
+    # Reading Correct Cell Barcodes
+    print("Reading Whitelisted Cells")
+    cell_list = deque()
+    filetype = 'cellranger'
+    with open(cells_file, 'r') as f:
+        reader = csv.reader(f, delimiter='\t')
+        for i, row in enumerate(reader):
+            # Check if CellRanger Format
+            if i == 0:
+                header = str.split(row[0], ",")
+                if len(header) < 8:
+                    filetype = ''
+            if i > 0:
+                if filetype == 'cellranger':
+                    cell = str.split(row[0], ",")
+                    if not (cell[8] == 'None'):
+                        cell_list.append(cell)
+                else:
+                    cell_list.append(row)
+
+    # Reading Bed Regions
+    print("Reading Reads in Bed Regions")
+    try:
+        interval = list()
+        with open(bed_file, 'r') as f:
+            print("tab")
+            reader = csv.reader(f, delimiter='\t')
+            for row in reader:
+                if (len(row)) > 0:
+                    row[1] = int(row[1])
+                    row[2] = int(row[2])
+                    interval.append(row)
+    except:
+        interval = list()
+        with open(bed_file, 'r') as f:
+            print("space ")
+            reader = csv.reader(f, delimiter=' ')
+            for row in reader:
+                if (len(row)) > 0:
+                    row[1] = int(row[1])
+                    row[2] = int(row[2])
+                    interval.append(row)
+
+    # Setting up containers
+    n_cells = len(cell_list)
+    n_regions = len(interval)
+    barcode_number = dict()
+    for i, barcode in enumerate(cell_list):
+        barcode_number[barcode[0]] = i
+
+    # Setting up paths
+    path, file = os.path.split(tsv_file)
+    path_bed, bfile = os.path.split(bed_file)
+
+    # Init Ray
+    processors = int(multiprocessing.cpu_count()) - 1
+    if not ray.is_initialized():
+        ray.init(num_cpus=processors, object_store_memory=int(40e9), include_webui=False)
+
+    # Split Load by Processor
+    splits = int(np.floor(len(interval) / processors))
+    split_interval = [interval[i:i + splits] for i in np.arange(0, len(interval), splits, dtype=int)]
+
+    # Split Calculations
+    results = []
+    for i_ in np.arange(len(split_interval)):
+        results.append(filtering_tsv.remote(tsv_file, barcode_number, copy.copy(split_interval[i_])))
+
+    # Collect Results
+    counts = np.zeros((n_cells, 0), dtype=int)
+    for i_ in np.arange(len(split_interval)):
+        temp = ray.get(results[i_])
+        counts = np.hstack([counts, temp])
+
+    # #############################################################################
+    # Writing Outputs
+    print("Formating Outputs")
+    counts = csr_matrix(counts)
+    print("Outputs")
+    mmwrite(os.path.join(path, file[:-3] + "_" + bfile[:-4] + "_counts.mtx"), counts)
+
+    #         Writing Barcodes
+    f = open(os.path.join(path, file[:-3] + "_" + bfile[:-4] + "_barcodes.tsv"), "w")
+    for i, barcode in enumerate(cell_list):
+        print(barcode[0], end='\n', file=f)
+    f.close()
+
+    #         Writing Bed Peaks
+    f = open(os.path.join(path, file[:-3] + "_" + bfile[:-4] + "_peaks.bed"), "w")
+    for i, region in enumerate(interval):
+        print(region[0], region[1], region[2], end='\n', sep='\t', file=f)
+    f.close()
+
+    print("End")
+
+
+@ray.remote
+def filtering_tsv(filename, barcode_num, inte):
+    temp_counts = np.zeros((len(barcode_num), len(inte)), dtype=int)
+    sam_file = pysam.TabixFile(filename)
+
+    for ii_, b_ in enumerate(inte):
+        for read in sam_file.fetch(b_[0], b_[1], b_[2]):
+            rows = read.split('\t')
+            if barcode_num.__contains__(rows[3]):
+                temp_counts[barcode_num[rows[3]], ii_] += 1
+
+    return temp_counts
+
+
+# COUNT FRAGMENTS IN PEAKS
+def filtering_fragments(fragments, barcodes):
+    print("Reading Barcodes")
+    print(barcodes)
+    barc_d = []
+    with open(barcodes, 'r') as f:
+        reader = csv.reader(f, delimiter='\t')
+        next(reader)
+        for row in reader:
+            if (len(row)) > 0:
+                barc_d.append(row[0])
+    barc_d = np.array(barc_d)
+
+    # FILTER TSV
+    print("Filtering")
+    with open(fragments) as f:
+        with open(fragments + '.filt.tsv', 'w') as f_out:
+            reader = csv.reader(f)
+            for row in reader:
+                if row[0].split('\t')[3] in barc_d:
+                    f_out.write(row[0] + "\n")

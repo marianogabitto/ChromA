@@ -59,6 +59,22 @@ def main(command_line=None):
                              default=None, help='Control State Properties. (default is None).')
     parser_atac.set_defaults(data='atac')
 
+    parser_count = subparsers.add_parser('count', help='Count Fragments in peaks.')
+    parser_count.add_argument('-i', '--input', nargs='+', action='store', dest='filename', type=str, required=True,
+                              help='tabix tsv files containing reads from ATACseq experiment (Required)')
+    parser_count.add_argument('-b', '--PeakdBedFile', action='store', dest='bedfile', type=str, required=True,
+                              default=None, help='Bedfile with peaks where to count fragments (Required)')
+    parser_count.add_argument('-c', '--WhiteListedCells', action='store', dest='cells', type=bool, required=False,
+                              default=False, help='Whitelisted Cells to be counted(Required)')
+    parser_count.set_defaults(data='count')
+
+    parser_filter = subparsers.add_parser('count', help='Count Fragments in peaks.')
+    parser_filter.add_argument('-i', '--input', nargs='+', action='store', dest='filename', type=str, required=True,
+                               help='tabix tsv files containing reads from ATACseq experiment (Required)')
+    parser_filter.add_argument('-c', '--WhiteListedCells', action='store', dest='cells', type=bool, required=False,
+                               default=False, help='Cells to keep (Required)')
+    parser_filter.set_defaults(data='filter')
+
     parser.add_argument('-v', '--version', action='version', version='%(prog)s {version}'.format(version=__version__))
     parser.add_argument('-ve', '--verbose', action='store', dest='verbose_level', type=str, required=False,
                         default='1', help='verbose level. 1 display messages, 0 omit them (default is 0).')
@@ -70,6 +86,27 @@ def main(command_line=None):
     if not hasattr(options, 'filename'):
         parser.print_help()
         sys.exit()
+    # #############################################
+    # #############################################
+
+    # #############################################
+    # #############################################
+    # COUNT FRAGMENTS IN PEAKS
+    if options.data == "count":
+        dh.count_fragments_bed(tsv_file=options.filename, bed_file=options.peaks, cells_file=options.cells)
+        sys.exit()
+    # #############################################
+    # #############################################
+
+    # #############################################
+    # #############################################
+    # FILTER FRAGMENTS
+    if options.data == "filter":
+        dh.filter_fragments(fragments=options.filename, barcodes=options.cells)
+        sys.exit()
+    # #############################################
+    # #############################################
+
     # #############################################
     # #############################################
     # BUILDING LOGGER
