@@ -18,9 +18,10 @@ def main(command_line=None):
     parser = argparse.ArgumentParser(description='ChromA')
     subparsers = parser.add_subparsers(help='help for sub-command')
 
-    parser_dnase = subparsers.add_parser('dnase', help='Count reads in peaks.')
+    parser_dnase = subparsers.add_parser('dnase', help='Run ChromA for DNASE experiments.')
     parser_dnase.add_argument('-i', '--input', nargs='+', action='store', dest='filename', type=str, required=True,
-                              help='Bam or tsv files containing reads from ATACseq experiment (Required)')
+                              help='Bam, tsv, tabix or Bedgraph files containing reads from' +
+                                   ' ATACseq experiment (Required)')
     parser_dnase.add_argument('-sb', '--saveBedFile', action='store', dest='save_bed', type=str, required=True,
                               default=None, help='save bedfile. Input path to save (default is False).')
     parser_dnase.add_argument('-reg', '--regions', action='store', dest='regions', type=bool, required=False,
@@ -39,9 +40,10 @@ def main(command_line=None):
                               default=None, help='Control State Properties. (default is None).')
     parser_dnase.set_defaults(data='dnase')
 
-    parser_atac = subparsers.add_parser('atac', help='Run ChromA for ATAC experiment.')
+    parser_atac = subparsers.add_parser('atac', help='Run ChromA for ATAC experiments.')
     parser_atac.add_argument('-i', '--input', nargs='+', action='store', dest='filename', type=str, required=True,
-                             help='Bam or tsv files containing reads from ATACseq experiment (Required)')
+                             help='Bam, tsv, tabix or Bedgraph files containing reads ' +
+                                  'from ATACseq experiment (Required)')
     parser_atac.add_argument('-sb', '--saveBedFile', action='store', dest='save_bed', type=str, required=True,
                              default=None, help='save bedfile. Input path to save (default is False).')
     parser_atac.add_argument('-reg', '--regions', action='store', dest='regions', type=bool, required=False,
@@ -59,16 +61,35 @@ def main(command_line=None):
                              default=None, help='Control State Properties. (default is None).')
     parser_atac.set_defaults(data='atac')
 
+    parser_cutrun = subparsers.add_parser('Cutrun', help='Run ChromA for CutRun experiments.')
+    parser_cutrun.add_argument('-i', '--input', nargs='+', action='store', dest='filename', type=str, required=True,
+                               help='Bam, tsv, tabix or Bedgraph files containing reads ' +
+                                    'from CutRun experiments (Required)')
+    parser_cutrun.add_argument('-sb', '--saveBedFile', action='store', dest='save_bed', type=str, required=True,
+                               default=None, help='save bedfile. Input path to save (default is False).')
+    parser_cutrun.add_argument('-reg', '--regions', action='store', dest='regions', type=bool, required=False,
+                               default=False, help='Parse reads on selected regions (Optional)')
+    parser_cutrun.add_argument('-it', '--iterations', action='store', dest='iterations', type=int, required=False,
+                               default=20, help='Number of iterations to fit the algorithm (default = 10, optional)')
+    parser_cutrun.add_argument('-spec', '--species', action='store', dest='species', type=str, required=False,
+                               default='mouse', choices=['mouse', 'human', 'fly'],
+                               help='Genome Species.(default = mouse, optional)')
+    parser_cutrun.add_argument('-r', '--states', nargs='+', action='store', dest='r', type=float, required=False,
+                               default=None, help='Control State Properties. (default is None).')
+    parser_cutrun.add_argument('-cont', '--control', action='store', dest='control', type=str, required=False,
+                               default=None, help='Control Experiment. (default is None).')
+    parser_cutrun.set_defaults(data='cutrun')
+
     parser_count = subparsers.add_parser('count', help='Count Fragments in peaks.')
     parser_count.add_argument('-i', '--input', nargs='+', action='store', dest='filename', type=str, required=True,
                               help='tabix tsv files containing reads from ATACseq experiment (Required)')
-    parser_count.add_argument('-b', '--PeakdBedFile', action='store', dest='bedfile', type=str, required=True,
+    parser_count.add_argument('-bed', '--PeakdBedFile', action='store', dest='bedfile', type=str, required=True,
                               default=None, help='Bedfile with peaks where to count fragments (Required)')
-    parser_count.add_argument('-c', '--WhiteListedCells', action='store', dest='cells', type=bool, required=False,
-                              default=False, help='Whitelisted Cells to be counted(Required)')
+    parser_count.add_argument('-c', '--WhiteListedCells', action='store', dest='cells', type=str, required=True,
+                              default=None, help='Whitelisted Cells to be counted(Required)')
     parser_count.set_defaults(data='count')
 
-    parser_filter = subparsers.add_parser('count', help='Count Fragments in peaks.')
+    parser_filter = subparsers.add_parser('filter', help='Filter Fragments given barcodes.')
     parser_filter.add_argument('-i', '--input', nargs='+', action='store', dest='filename', type=str, required=True,
                                help='tabix tsv files containing reads from ATACseq experiment (Required)')
     parser_filter.add_argument('-c', '--WhiteListedCells', action='store', dest='cells', type=bool, required=False,
@@ -93,7 +114,7 @@ def main(command_line=None):
     # #############################################
     # COUNT FRAGMENTS IN PEAKS
     if options.data == "count":
-        dh.count_fragments_bed(tsv_file=options.filename, bed_file=options.peaks, cells_file=options.cells)
+        dh.count_fragments_bed(tsv_file=options.filename[0], bed_file=options.bedfile, cells_file=options.cells)
         sys.exit()
     # #############################################
     # #############################################
@@ -139,6 +160,23 @@ def main(command_line=None):
                                                         pi_prior=pi_prior, tmat_prior=tmat_prior,
                                                         blacklisted=options.blacklisted, datatype=options.data)
     hsmm.train(filename=options.filename, species=options.species, iterations=options.iterations)
+    # #############################################
+    # #############################################
+
+    # #############################################
+    # #############################################
+    # IF CUTRUN, FIT CONTROL EXPERIMENT
+    if options.data == 'cutrun' and options.control is not None:
+        hsmm_control = models.BayesianHsmmExperimentMultiProcessing(states=state_list, top_states=top_states,
+                                                                    compute_regions=options.regions,
+                                                                    pi_prior=pi_prior, tmat_prior=tmat_prior,
+                                                                    blacklisted=options.blacklisted,
+                                                                    datatype=options.data)
+        hsmm_control.train(filename=options.control, species=options.species, iterations=options.iterations)
+
+        # TODO: SUBSTRACT CONTROL FROM EXPERIMENT
+        # TODO: REMOVE CONTROL FROM MEMORY
+
     # #############################################
     # #############################################
 

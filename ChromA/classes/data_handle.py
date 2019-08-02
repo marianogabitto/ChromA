@@ -1,3 +1,4 @@
+from collections import deque
 import seaborn as sns
 import numpy as np
 import logging
@@ -106,8 +107,9 @@ def validate_inputs(files=None, species=None, datatype='atac'):
         if not os.path.isfile(f_):
             logging.error("ERROR:File does not exists. {}".format(f_))
             raise SystemExit
+
         # TRY TO VALIDATE BAM
-        if f_[-3:] == 'bam':
+        if f_.split('.')[-1] == 'bam':
             try:
                 if species == 'fly':
                     chr_reads([f_], 'chr3R', 5624047, 5625400, dnase=dnase)
@@ -116,8 +118,9 @@ def validate_inputs(files=None, species=None, datatype='atac'):
             except:
                 logging.error("ERROR:Could not read file as BAM format. {}".format(f_))
                 raise SystemExit
+
         # TRY TO VALIDATE TABIX FILE
-        elif f_[-3:] == '.gz':
+        elif f_.split('.')[-1] == 'gz':
             try:
                 if species == 'fly':
                     chr_reads([f_], 'chr3R', 5624047, 5625400, dnase=dnase)
@@ -126,16 +129,48 @@ def validate_inputs(files=None, species=None, datatype='atac'):
             except:
                 logging.error("ERROR:Could not read file as TABIX format. {}".format(f_))
                 raise SystemExit
-        # TRY TO VALIDATE AS BED OR TSV
+
+        # TRY TO VALIDATE BEDGRAPH FILE
+        elif f_.split('.')[-1] == 'bedgraph':
+            try:
+                with open(f_, 'r') as f:
+                    reader = csv.reader(f, delimiter='\t')
+                    row = next(reader)
+                    assert (row[0][:3] == 'chr')
+                    assert (int(row[1]) >= 0)
+                    assert (int(row[2]) >= 0)
+                    assert (int(row[3]) >= 0)
+
+                path, name = os.path.split(f_)
+                if not os.path.isfile(os.path.join(path, '{}_reads.npy'.format(name))):
+                    logging.info("Preprocessing BEDGRAPH file: {}".format(f_))
+                    with open(f_, 'r') as f:
+                        max_size = len(f.readlines())
+
+                    with open(f_, 'r') as f:
+                        reads_array = np.zeros(max_size, dtype='|S5, int, int, int')
+                        reader = csv.reader(f, delimiter='\t')
+                        idx = 0
+                        for row in reader:
+                            reads_array[idx][0] = row[0]
+                            reads_array[idx][1] = row[1]
+                            reads_array[idx][2] = row[2]
+                            reads_array[idx][3] = int(float(row[3]))
+                            idx += 1
+
+                    np.save(os.path.join(path, '{}_reads.npy'.format(name)), reads_array)
+
+            except:
+                logging.error("ERROR:Could not read file as BEDGRAPH format.{}".format(f_))
+                raise SystemExit
+
+        # TRY TO VALIDATE AS 3 COLUMNS BED OR TSV
         else:
             try:
                 with open(f_, 'r') as f:
                     reader = csv.reader(f, delimiter='\t')
                     row = next(reader)
-                    assert(row[0] in ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr7', 'chr8', 'chr9', 'chr10',
-                                      'chr11', 'chr12', 'chr13', 'chr14', 'chr15', 'chr16', 'chr17', 'chr18', 'chr19',
-                                      'chr20', 'chr21', 'chr22', 'chrX', 'chrY', 'chrM', 'chr2L',
-                                      'chr2R', 'chr3L', 'chr3R'])
+                    assert (row[0][:3] == 'chr')
                     assert(int(row[1]) > 0)
                     assert(int(row[2]) > 0)
 
@@ -160,7 +195,7 @@ def validate_inputs(files=None, species=None, datatype='atac'):
                     np.save(os.path.join(path, '{}_reads.npy'.format(name)), reads_array)
 
             except:
-                logging.error("ERROR:Could not read file as TSV format.{}".format(f_))
+                logging.error("ERROR:Could not read file as 3 columns TSV/BED format.{}".format(f_))
                 raise SystemExit
 
     logger.info("Inputs Validated")
