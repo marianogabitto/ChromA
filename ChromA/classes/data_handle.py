@@ -1,4 +1,7 @@
+from scipy.sparse import csr_matrix
+from scipy.io import mmwrite
 from collections import deque
+import multiprocessing
 import seaborn as sns
 import numpy as np
 import logging
@@ -619,14 +622,14 @@ def count_reads(file, species):
 
 # ######################################################################
 # BEDFILES ROUTINES
-def read_bed(bed_file):
+def read_bed(bed_file, avoid1=True):
     interval = []
 
     try:
         with open(bed_file, 'r') as f:
             reader = csv.reader(f, delimiter='\t')
             for row in reader:
-                if (len(row)) > 0:
+#                if (len(row)) > 0:
                     row[1] = int(row[1])
                     row[2] = int(row[2])
                     interval.append(row)
@@ -634,7 +637,7 @@ def read_bed(bed_file):
         with open(bed_file, 'r') as f:
             reader = csv.reader(f, delimiter=' ')
             for row in reader:
-                if (len(row)) > 0:
+ #               if (len(row)) > 0:
                     row[1] = int(row[1])
                     row[2] = int(row[2])
                     interval.append(row)

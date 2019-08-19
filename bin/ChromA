@@ -163,19 +163,8 @@ def main(command_line=None):
     # #############################################
     # #############################################
 
-    # #############################################
-    # #############################################
-    # IF CUTRUN, FIT CONTROL EXPERIMENT
-    if options.data == 'cutrun' and options.control is not None:
-        hsmm_control = models.BayesianHsmmExperimentMultiProcessing(states=state_list, top_states=top_states,
-                                                                    compute_regions=options.regions,
-                                                                    pi_prior=pi_prior, tmat_prior=tmat_prior,
-                                                                    blacklisted=options.blacklisted,
-                                                                    datatype=options.data)
-        hsmm_control.train(filename=options.control, species=options.species, iterations=options.iterations)
-
-        # TODO: SUBSTRACT CONTROL FROM EXPERIMENT
-        # TODO: REMOVE CONTROL FROM MEMORY
+    # TODO: SUBSTRACT CONTROL FROM EXPERIMENT
+    # TODO: REMOVE CONTROL FROM MEMORY
 
     # #############################################
     # #############################################

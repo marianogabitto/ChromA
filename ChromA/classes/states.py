@@ -74,8 +74,8 @@ def build_states(typ='atac', filename=None, r=None):
         tmat_prior = np.array([[0, 1],
                                [1, 0]])
         state_list = []
-        closed_state = NegativeBinomialGEO(r=r1, p=1e-4, cut0=1, cut1=50)
-        open_state = NegativeBinomialGEO(r=r2, p=1e-4, cut0=20, cut1=10)
+        closed_state = NegativeBinomialGEO(r=r1, p=1.5e-4, cut0=1, cut1=50)
+        open_state = NegativeBinomialGEO(r=r2, p=1.5e-4, cut0=20, cut1=10)
         state_list.append(closed_state)
         state_list.append(open_state)
 
@@ -85,12 +85,12 @@ def build_states(typ='atac', filename=None, r=None):
                                   [1, 100]])
 
             top_states = list()
-            top_closed_state = TopStateNegativeBinomial(r=r1, p=1e-4, toptmat0=top_tmat0, order=0)
-            top_open_state = TopStateNegativeBinomial(r=r2, p=1e-4, toptmat0=top_tmat0, order=1)
+            top_closed_state = TopStateNegativeBinomial(r=r1, p=1.5e-4, toptmat0=top_tmat0, order=0)
+            top_open_state = TopStateNegativeBinomial(r=r2, p=1.5e-4, toptmat0=top_tmat0, order=1)
             top_states.append(top_closed_state)
             top_states.append(top_open_state)
 
-        bedopts = BedOptions(thres=0.05, ext=0, merge=500, filterpeaks=30)
+        bedopts = BedOptions(thres=0.05, ext=0, merge=500, filterpeaks=75)
 
     else:
         raise SystemError
