@@ -145,6 +145,7 @@ def main(command_line=None):
     # BUILDING PARAMETERS SINGLE EXPERIMENT
     for _ in np.arange(len(options.filename)):
         logger.info("Processing File:{}".format(options.filename[_]))
+        print("Processing File:{}".format(options.filename[_]))
 
     pi_prior, tmat_prior, state_list, top_states, bedopts = \
         states.build_states(typ=options.data, filename=options.filename, r=options.r)

@@ -160,17 +160,20 @@ class BayesianHsmmExperimentMultiProcessing:
                 chr_list = list(np.arange(1, 20))
                 chr_list.append('X')
                 chr_list.append('Y')
-                self.logger.info('Running on mouse genome. 19 Chroms')
+                chr_list = data_handle.validate_chr(chr_list, filename, species)
+                self.logger.info('Running on mouse genome. Chroms:{}'.format(chr_list))
             elif species == 'human':
                 self.species = 'human'
                 chr_list = list(np.arange(1, 23))
                 chr_list.append('X')
                 chr_list.append('Y')
-                self.logger.info('Running on human genome. 22 Chroms')
+                chr_list = dh.validate_chr(chr_list, filename, species)
+                self.logger.info('Running on human genome. Chroms:{}'.format(chr_list))
             elif species == 'fly':
                 self.species = 'fly'
                 chr_list = ['2L', '2R', '3L', '3R', '4', 'X', 'Y']
-                self.logger.info('Running on fly genome. 7 Chroms')
+                chr_list = dh.validate_chr(chr_list, filename, species)
+                self.logger.info('Running on fly genome. Chroms:{}'.format(chr_list))
 
             # Run Training in parallel
             while len(chr_list) > 0:

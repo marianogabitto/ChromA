@@ -44,7 +44,7 @@ hasEigenLibReady = True
 
 try:
     # lib = ctypes.cdll.LoadLibrary(os.path.join(libpath, libfilename))
-    print('Found C++ Core:', libpath, libfilename)
+    # print('Found C++ Core:', libpath, libfilename)
     library_name = 'libfwdbwdcpp' + sysconfig.get_config_var('EXT_SUFFIX')
     library_path = search_paths_for_file(library_name, sys.path)
     lib = ctypes.cdll.LoadLibrary(library_path)

@@ -57,6 +57,22 @@ def fly_lens():
     return lens
 
 
+def species_chromosomes(species):
+
+    if species == 'mouse':
+        chrom_length = mouse_lens()
+    elif species == 'human':
+        chrom_length = human_lens()
+    elif species == fly:
+        chrom_length = fly_lens()
+    else:
+        chrom_length = []
+        logging.error("ERROR:Wrong Species. {}".format(spec))
+        raise SystemExit
+
+    return chrom_length
+
+
 def build_logger(verbose_mode, filename=None, supress=False):
     # Configure Root Logger
     logger = logging.getLogger()
@@ -204,6 +220,29 @@ def validate_inputs(files=None, species=None, datatype='atac'):
     logger.info("Inputs Validated")
 
     return
+
+
+def validate_chr(chrom_list, filenames, spec):
+
+    chrom_length = species_chromosomes(spec)
+    chrom_out = copy.copy(chrom_list)
+
+    for f_ in filenames:
+        if not os.path.isfile(f_):
+            logging.error("ERROR:File does not exists. {}".format(f_))
+            raise SystemExit
+
+        for chr_ in chrom_list:
+            try:
+                chromosome = 'chr' + str(chr_)
+                # [l.split('\t') for l in pysam.idxstats(f_).split('\n')]
+                reads = chr_reads([f_], chromosome, 1, int(chrom_length[chromosome] / 10))
+                if np.sum(reads) < 100:
+                    chrom_out.remove(chr_)
+            except:
+                chrom_out.remove(chr_)
+
+    return chrom_out
 
 
 def regions_th17(filename=None, species='mouse', dnase=False):
@@ -734,11 +773,13 @@ def bed_result(filename, data, start, chrom, threshold=0.5, bedext=100, bedmerge
         # write bed
         write_bed(filename, data=np.array(chr_l), start=reg_out[:, 0], end=reg_out[:, 1],
                   ext=bedext, merge=bedmerge, filterpeaks=filterpeaks)
+        chr_names = np.core.defchararray.add('chr', np.array(chr_l))
+        peaks = np.concatenate([chr_names[:, None], np.int64(reg_out)], axis=1)
     else:
         print("No regions to write to Bed File.")
-        reg_out = []
+        peaks = []
 
-    return reg_out
+    return peaks
 
 
 def blacklist_reads(data, bl, chrom, start, length):
@@ -761,6 +802,7 @@ def frip_sn(annot, spec='mouse', file=None, dnase=False):
     # Validate Species
     chroma_root = os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
+    # ALL METRICS ARE COMPUTED ON A REFERENCE CHROMOSOME PER SPECIEs
     if spec == 'mouse':
         chrom_lens = mouse_lens()
         prom = chroma_root + "/data/promoters/prom_mm10_genes.bed"
@@ -779,7 +821,7 @@ def frip_sn(annot, spec='mouse', file=None, dnase=False):
         reference_chromosome = []
         raise AssertionError
 
-    approx_coef = chrom_lens[reference_chromosome]/np.sum(list(chrom_lens.values()))
+    approx_coef = chrom_lens[reference_chromosome] / np.sum(list(chrom_lens.values()))
 
     # Validate File
     if file is None:
@@ -794,8 +836,8 @@ def frip_sn(annot, spec='mouse', file=None, dnase=False):
     # Count Fraction of Tn5 Binding Events in Peaks
     frip_count = 0.
     for i_, c_ in enumerate(annot):
-        if c_[0] == 1:
-            frip_count += reads[int(c_[1]):int(c_[2])].sum()
+        if c_[0] == reference_chromosome:
+            frip_count += reads[np.int64(c_[1]):np.int64(c_[2])].sum()
 
     frip_count = frip_count / np.sum(reads)
 
@@ -820,8 +862,8 @@ def frip_sn(annot, spec='mouse', file=None, dnase=False):
         plt.hist(ins, 300)
         ax = plt.axis()
         plt.axis([0, 1000, ax[2], ax[3]])
-        _, name = os.path.split(file[0])
-        pp = PdfPages(name[:-4] + '_insert_size.pdf')
+        name, _ = os.path.splitext(file[0])
+        pp = PdfPages(name + '_insert_size.pdf')
         pp.savefig(fig1)
         pp.close()
     except:
