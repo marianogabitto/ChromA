@@ -190,6 +190,19 @@ class BayesianHsmmExperimentMultiProcessing:
                     chr_list.remove(chr_)
 
                 # Collect Results
+                """
+                while len(results) > 0:
+                    ready, _ = ray.wait(results,timeout=1.0)
+                    if len(ready) > 0:
+                        for r_ in ready:
+                            res, _ = ray.get(r_)
+                            results.remove(r_)
+                            for l_ in np.arange(len(res[0])):
+                                self.annotations.append(res[0][l_])
+                                self.annotations_chr.append(res[1][l_])
+                                self.annotations_start.append(res[2][l_])
+                                self.annotations_length.append(res[3][l_])
+                """
                 for r_ in reversed(results):
                     res, _ = ray.get(r_)
                     for l_ in np.arange(len(res[0])):
