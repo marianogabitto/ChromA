@@ -227,20 +227,22 @@ def validate_chr(chrom_list, filenames, spec):
     chrom_length = species_chromosomes(spec)
     chrom_out = copy.copy(chrom_list)
 
-    for f_ in filenames:
-        if not os.path.isfile(f_):
-            logging.error("ERROR:File does not exists. {}".format(f_))
-            raise SystemExit
+    for chr_ in chrom_list:
+        for f_ in filenames:
+            if not os.path.isfile(f_):
+                logging.error("ERROR:File does not exists. {}".format(f_))
+                raise SystemExit
 
-        for chr_ in chrom_list:
             try:
                 chromosome = 'chr' + str(chr_)
                 # [l.split('\t') for l in pysam.idxstats(f_).split('\n')]
                 reads = chr_reads([f_], chromosome, 1, int(chrom_length[chromosome]))
                 if np.sum(reads) < 100:
                     chrom_out.remove(chr_)
+                    break
             except:
                 chrom_out.remove(chr_)
+                break
 
     return chrom_out
 
