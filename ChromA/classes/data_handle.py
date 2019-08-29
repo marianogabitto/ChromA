@@ -236,7 +236,7 @@ def validate_chr(chrom_list, filenames, spec):
             try:
                 chromosome = 'chr' + str(chr_)
                 # [l.split('\t') for l in pysam.idxstats(f_).split('\n')]
-                reads = chr_reads([f_], chromosome, 1, int(chrom_length[chromosome] / 10))
+                reads = chr_reads([f_], chromosome, 1, int(chrom_length[chromosome]))
                 if np.sum(reads) < 100:
                     chrom_out.remove(chr_)
             except:

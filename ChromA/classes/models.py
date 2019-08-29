@@ -167,12 +167,12 @@ class BayesianHsmmExperimentMultiProcessing:
                 chr_list = list(np.arange(1, 23))
                 chr_list.append('X')
                 chr_list.append('Y')
-                chr_list = dh.validate_chr(chr_list, filename, species)
+                chr_list = data_handle.validate_chr(chr_list, filename, species)
                 self.logger.info('Running on human genome. Chroms:{}'.format(chr_list))
             elif species == 'fly':
                 self.species = 'fly'
                 chr_list = ['2L', '2R', '3L', '3R', '4', 'X', 'Y']
-                chr_list = dh.validate_chr(chr_list, filename, species)
+                chr_list = data_handle.validate_chr(chr_list, filename, species)
                 self.logger.info('Running on fly genome. Chroms:{}'.format(chr_list))
 
             # Run Training in parallel
