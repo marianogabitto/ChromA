@@ -907,11 +907,20 @@ def count_fragments_bed(tsv_file, bed_file, cells_file):
     with open(cells_file, 'r') as f:
         reader = csv.reader(f, delimiter='\t')
         for i, row in enumerate(reader):
-            # Check if CellRanger Format
             if i == 0:
                 header = str.split(row[0], ",")
+                # Check if CellRanger Format by length of fields
                 if len(header) < 8:
                     filetype = ''
+                # If neither 'x' nor 'barcode' is in the first line, it must be a barcode. Save it
+                if not(('barcode' in header[0]) or ('x' in header[0])):
+                    if filetype == 'cellranger':
+                        cell = str.split(row[0], ",")
+                        if not (cell[8] == 'None'):
+                            cell_list.append(cell)
+                    else:
+                        cell_list.append(row)
+
             if i > 0:
                 if filetype == 'cellranger':
                     cell = str.split(row[0], ",")
@@ -967,6 +976,7 @@ def count_fragments_bed(tsv_file, bed_file, cells_file):
     results = []
     for i_ in np.arange(len(split_interval)):
         results.append(filtering_tsv.remote(tsv_file, barcode_number, copy.copy(split_interval[i_])))
+        # filtering_tsv(tsv_file, barcode_number, copy.copy(split_interval[i_]))
 
     # Collect Results
     counts = np.zeros((n_cells, 0), dtype=int)
@@ -1002,10 +1012,17 @@ def filtering_tsv(filename, barcode_num, inte):
     sam_file = pysam.TabixFile(filename)
 
     for ii_, b_ in enumerate(inte):
-        for read in sam_file.fetch(b_[0], b_[1], b_[2]):
-            rows = read.split('\t')
-            if barcode_num.__contains__(rows[3]):
-                temp_counts[barcode_num[rows[3]], ii_] += 1
+        try:
+            for read in sam_file.fetch(b_[0], b_[1], b_[2]):
+                rows = read.split('\t')
+                if barcode_num.__contains__(rows[3]):
+                    if (int(rows[1]) > int(b_[1])) and (int(rows[1]) < int(b_[2])):
+                        temp_counts[barcode_num[rows[3]], ii_] += 1
+                    if (int(rows[2]) > int(b_[1])) and (int(rows[2]) < int(b_[2])):
+                        temp_counts[barcode_num[rows[3]], ii_] += 1
+
+        except:
+            print("Failed to read: {}.".format(b_))
 
     return temp_counts
 
