@@ -1042,6 +1042,7 @@ def filtering_fragments(fragments, barcodes):
 
     # FILTER TSV
     print("Filtering")
+    print(fragments)
     with open(fragments) as f:
         with open(fragments + '.filt.tsv', 'w') as f_out:
             reader = csv.reader(f)

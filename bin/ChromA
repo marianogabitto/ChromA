@@ -92,8 +92,8 @@ def main(command_line=None):
     parser_filter = subparsers.add_parser('filter', help='Filter Fragments given barcodes.')
     parser_filter.add_argument('-i', '--input', nargs='+', action='store', dest='filename', type=str, required=True,
                                help='tabix tsv files containing reads from ATACseq experiment (Required)')
-    parser_filter.add_argument('-c', '--WhiteListedCells', action='store', dest='cells', type=bool, required=False,
-                               default=False, help='Cells to keep (Required)')
+    parser_filter.add_argument('-c', '--WhiteListedCells', action='store', dest='cells', type=str, required=True,
+                               default="", help='Cells to keep (Required)')
     parser_filter.set_defaults(data='filter')
 
     parser.add_argument('-v', '--version', action='version', version='%(prog)s {version}'.format(version=__version__))
@@ -123,7 +123,7 @@ def main(command_line=None):
     # #############################################
     # FILTER FRAGMENTS
     if options.data == "filter":
-        dh.filter_fragments(fragments=options.filename, barcodes=options.cells)
+        dh.filtering_fragments(fragments=options.filename[0], barcodes=options.cells)
         sys.exit()
     # #############################################
     # #############################################
