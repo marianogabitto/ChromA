@@ -1031,6 +1031,7 @@ def filtering_tsv(filename, barcode_num, inte):
 def filtering_fragments(fragments, barcodes):
     print("Reading Barcodes")
     print(barcodes)
+    path_barc, barc_file = os.path.split(barcodes)
     barc_d = []
     with open(barcodes, 'r') as f:
         reader = csv.reader(f, delimiter='\t')
@@ -1044,7 +1045,7 @@ def filtering_fragments(fragments, barcodes):
     print("Filtering")
     print(fragments)
     with open(fragments) as f:
-        with open(fragments + '.filt.tsv', 'w') as f_out:
+        with open(fragments + "_" + barc_file + '.tsv', 'w') as f_out:
             reader = csv.reader(f)
             for row in reader:
                 if row[0].split('\t')[3] in barc_d:
