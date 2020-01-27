@@ -44,6 +44,9 @@ def main(command_line=None):
     parser_atac.add_argument('-i', '--input', nargs='+', action='store', dest='filename', type=str, required=True,
                              help='Bam, tsv, tabix or Bedgraph files containing reads ' +
                                   'from ATACseq experiment (Required)')
+    parser_atac.add_argument('-sub', '--subtract', nargs='+', action='store', dest='filename2', type=str, required=True,
+                             help='Bam, tsv, tabix or Bedgraph files containing reads ' +
+                                  'from ATACseq experiment to be subtracted (Required)', default=None)
     parser_atac.add_argument('-sb', '--saveBedFile', action='store', dest='save_bed', type=str, required=True,
                              default=None, help='save bedfile. Input path to save (default is False).')
     parser_atac.add_argument('-reg', '--regions', action='store', dest='regions', type=bool, required=False,
@@ -96,6 +99,17 @@ def main(command_line=None):
                                default="", help='Cells to keep (Required)')
     parser_filter.set_defaults(data='filter')
 
+    parser_bind = subparsers.add_parser('bind', help='Create Matrix reads and G+C given TFs, barcodes.')
+    parser_bind.add_argument('-loc', '--locations', nargs='+', action='store', dest='filename', type=str, required=True,
+                             help='bed file with location of binding site for each TF. 4th column TF name (Required)')
+    parser_bind.add_argument('-cell', '--WhiteListedCells', action='store', dest='cells', type=str, required=True,
+                             default="", help='Cells to keep (Required)')
+    parser_bind.add_argument('-counts', '--countmatrix', action='store', dest='countmat', type=str, required=True,
+                             default="", help='tabix tsv file containing reads from ATACseq experiment (Required)')
+    parser_bind.add_argument('-gen', '--genome', action='store', dest='genome', type=str, required=True,
+                             default="", help='Organism Genome to compute G+C content (Required)')
+    parser_bind.set_defaults(data='bind')
+
     parser.add_argument('-v', '--version', action='version', version='%(prog)s {version}'.format(version=__version__))
     parser.add_argument('-ve', '--verbose', action='store', dest='verbose_level', type=str, required=False,
                         default='1', help='verbose level. 1 display messages, 0 omit them (default is 0).')
@@ -130,13 +144,24 @@ def main(command_line=None):
 
     # #############################################
     # #############################################
+    # BIND MOTIVES
+    if options.data == "bind":
+        dh.count_motif(tsv_file=options.countmat, bed_file=options.filename[0], cells_file=options.cells,
+                       genome=options.genome)
+        sys.exit()
+    # #############################################
+    # #############################################
+
+    # #############################################
+    # #############################################
     # BUILDING LOGGER
     name = options.save_bed + '.log'
     dh.build_logger(options.verbose_level, filename=name)
     logger = logging.getLogger()
 
     # VALIDATE INPUTS
-    dh.validate_inputs(files=options.filename, species=options.species, datatype=options.data)
+    dh.validate_inputs(files=np.concatenate([options.filename, options.filename2]),
+                       species=options.species, datatype=options.data)
     # #############################################
     # #############################################
 
@@ -148,7 +173,7 @@ def main(command_line=None):
         print("Processing File:{}".format(options.filename[_]))
 
     pi_prior, tmat_prior, state_list, top_states, bedopts = \
-        states.build_states(typ=options.data, filename=options.filename, r=options.r)
+        states.build_states(typ=options.data, filename=options.filename, r=options.r, files_sub=options.filename2)
 
     # #############################################
     # #############################################

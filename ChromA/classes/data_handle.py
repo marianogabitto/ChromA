@@ -4,8 +4,8 @@ from collections import deque
 import multiprocessing
 import seaborn as sns
 import numpy as np
+import bitarray
 import logging
-import pickle
 import pysam
 import copy
 import ray
@@ -21,7 +21,7 @@ for gui in gui_env:
         ff = plt.figure()
         plt.close('all')
         break
-    except:
+    except ModuleNotFoundError:
         continue
 
 from matplotlib.backends.backend_pdf import PdfPages
@@ -63,11 +63,10 @@ def species_chromosomes(species):
         chrom_length = mouse_lens()
     elif species == 'human':
         chrom_length = human_lens()
-    elif species == fly:
+    elif species == 'fly':
         chrom_length = fly_lens()
     else:
-        chrom_length = []
-        logging.error("ERROR:Wrong Species. {}".format(spec))
+        logging.error("ERROR:Wrong Species. {}".format(species))
         raise SystemExit
 
     return chrom_length
@@ -663,25 +662,47 @@ def count_reads(file, species):
 
 # ######################################################################
 # BEDFILES ROUTINES
-def read_bed(bed_file, avoid1=True):
-    interval = []
+def read_bed(bed_file, avoid_header=False):
+    # Reading Bed File
+    print("Reading Bed File Format: {}".format(bed_file))
+    with open(bed_file, 'r') as f:
+        # Recognize Tab or Space Delimited File
+        reader_tab = csv.reader(f, delimiter='\t')
+        if avoid_header:
+            next(reader_tab)
+        if len(next(reader_tab)) > 2:
+            tab = True
+        else:
+            tab = False
 
-    try:
-        with open(bed_file, 'r') as f:
+    with open(bed_file, 'r') as f:
+        reader_space = csv.reader(f, delimiter=' ')
+        if avoid_header:
+            next(reader_space)
+        if len(next(reader_space)) > 2:
+            space = True
+        else:
+            space = False
+
+    interval = []
+    with open(bed_file, 'r') as f:
+        if tab:
+            print("Reading Bed in Tab Format")
             reader = csv.reader(f, delimiter='\t')
-            for row in reader:
-#                if (len(row)) > 0:
-                    row[1] = int(row[1])
-                    row[2] = int(row[2])
-                    interval.append(row)
-    except:
-        with open(bed_file, 'r') as f:
+        elif space:
+            print("Reading Bed in Space Format")
             reader = csv.reader(f, delimiter=' ')
-            for row in reader:
- #               if (len(row)) > 0:
-                    row[1] = int(row[1])
-                    row[2] = int(row[2])
-                    interval.append(row)
+        else:
+            print("Cannot Recognize Bed File Format")
+            raise SystemExit
+
+        for row in reader:
+            if avoid_header:
+                next(reader)
+            if (len(row)) > 2:
+                row[1] = int(row[1])
+                row[2] = int(row[2])
+                interval.append(row)
 
     return interval
 
@@ -1050,3 +1071,130 @@ def filtering_fragments(fragments, barcodes):
             for row in reader:
                 if row[0].split('\t')[3] in barc_d:
                     f_out.write(row[0] + "\n")
+
+
+# ######################################################################
+# COUNT READS IN MOTIVES AND G+C CONTENT
+def count_motif(tsv_file, bed_file, cells_file, genome):
+    # Re-write BedFile Center in Location.
+    motif_bedfile, interv = rewrite_bedfile(input_file=bed_file, extension=100)
+
+    # Count Fragments in Binding Locations.
+    count_fragments_bed(tsv_file, motif_bedfile, cells_file)
+
+    # Calculate G+C content
+    gc_content = calculate_gc(genome, motif_bedfile)
+
+    # Map TFs to Peaks
+    map_peaks_tfs = np.zeros(len(interv))
+    current_tf = ""
+    tf_names = list()
+    for i_, int_ in interv:
+        if not(int_[3] == current_tf):
+            tf_names.append(int_[3])
+        map_peaks_tfs[i_] = len(tf_names)
+
+    # Write TFs to File
+    print("Writing TFs To File")
+    path_bed, bfile = os.path.split(bed_file)
+    output_name1 = os.path.join(path_bed, bfile[:-3] + "_" + bfile[:-4] + "_tfname.bed")
+    f = open(output_name1, "w")
+    for i_, name_ in enumerate(tf_names):
+        print(i_, name_, end='\n', sep='\t', file=f)
+    f.close()
+
+    # Write Map Peaks to TFs to File
+    print("Writing Map Peaks to TFs To File")
+    path_bed, bfile = os.path.split(bed_file)
+    output_name2 = os.path.join(path_bed, bfile[:-3] + "_" + bfile[:-4] + "_maptfs.bed")
+    f = open(output_name2, "w")
+    for i_, tf_ in enumerate(map_peaks_tfs):
+        print(i_, tf_, gc_content[i_], tf_names[tf_], end='\n', sep='\t', file=f)
+    f.close()
+
+
+def rewrite_bedfile(input_file, extension=100):
+
+    # Reading Bed File
+    intervals = read_bed(input_file, avoid_header=False)
+
+    #  Writing Motif Bed Peaks
+    print("Writing Motif Bed File")
+    path_bed, bfile = os.path.split(input_file)
+    output_name = os.path.join(path_bed, bfile[:-3] + "_" + bfile[:-4] + "_motifpeaks.bed")
+    f = open(output_name, "w")
+    for i, region in enumerate(intervals):
+        center = np.mean(region[1:3])
+        print(region[0], center - extension, center + extension, region[3], end='\n', sep='\t', file=f)
+    f.close()
+
+    return output_name, intervals
+
+
+def calculate_gc(gen, bed):
+
+    # Load G+C Structure into memory
+    lchrom = species_chromosomes(gen)
+
+    chroma_root = os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+
+    genome = dict()
+    for i_, k_ in enumerate(lchrom.keys()):
+        chromosome = bitarray.bitarray()
+        path = chroma_root + "/data/gc/mm10/"
+        with open(os.path.join(path, k_ + ".ba"), 'rb') as fh:
+            chromosome.fromfile(fh)
+        genome[k_] = chromosome
+
+    # Read Bed File
+    intervals = read_bed(bed, avoid_header=False)
+
+    # Count G+C structure for regions in bed
+    gc_content = np.zeros(len(intervals))
+    for i_, b_ in enumerate(intervals):
+        region = np.array_str(np.array(genome[b_[0]][b_[1]:b_[2]+1].to01()))
+        gc_content[i_] = np.mean([1 if x == '1' else 0 for x in region])
+
+    return gc_content
+
+
+def create_gc_annotation(fasta_list, species):
+    """
+    Create Boolean Vector with G+C content at each base
+
+    :param fasta_list: LIST of fasta file formatted as [chr1.fa, chr2.fa ....]
+    :param species: STRING mouse, human, fly
+    :return:
+    """
+    lchrom = species_chromosomes(species)
+
+    for f_ in fasta_list:
+        path, name = os.path.split(f_)
+        chrom, ext = name.split('.')
+        gc = np.zeros((lchrom[chrom], 1), dtype=np.bool)
+        fasta_open = pysam.Fastafile(f_)
+        seq_fasta = fasta_open.fetch(chrom, 1, lchrom[chrom])
+        for i_, base_ in enumerate(seq_fasta):
+            if base_ is "C" or base_ == "G" or base_ == "c" or base_ == "g":
+                gc[i_, 0] = 1
+
+        # Saving in sparse file format
+        bagc = bitarray.bitarray(list(gc))
+        with open(os.path.join(path, name + ".ba"), 'wb') as fh:
+            bagc.tofile(fh)
+
+
+"""
+print(calculate_gc("mouse", "/Users/mgabitto/Desktop/test.bed"))
+create_gc_annotation(['/Users/mgabitto/Desktop/temp/chr1.fa', '/Users/mgabitto/Desktop/temp/chr2.fa',
+                      '/Users/mgabitto/Desktop/temp/chr3.fa', '/Users/mgabitto/Desktop/temp/chr4.fa',
+                      '/Users/mgabitto/Desktop/temp/chr5.fa', '/Users/mgabitto/Desktop/temp/chr6.fa',
+                      '/Users/mgabitto/Desktop/temp/chr7.fa', '/Users/mgabitto/Desktop/temp/chr8.fa',
+                      '/Users/mgabitto/Desktop/temp/chr9.fa', '/Users/mgabitto/Desktop/temp/chr10.fa',
+                      '/Users/mgabitto/Desktop/temp/chr11.fa', '/Users/mgabitto/Desktop/temp/chr12.fa',
+                      '/Users/mgabitto/Desktop/temp/chr13.fa', '/Users/mgabitto/Desktop/temp/chr14.fa',
+                      '/Users/mgabitto/Desktop/temp/chr15.fa', '/Users/mgabitto/Desktop/temp/chr16.fa',
+                      '/Users/mgabitto/Desktop/temp/chr17.fa', '/Users/mgabitto/Desktop/temp/chr18.fa',
+                      '/Users/mgabitto/Desktop/temp/chr19.fa', '/Users/mgabitto/Desktop/temp/chrX.fa',
+                      '/Users/mgabitto/Desktop/temp/chrY.fa', '/Users/mgabitto/Desktop/temp/chrM.fa'], 'mouse')
+"""

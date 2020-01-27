@@ -1,3 +1,6 @@
+# Big Files
+*.ba
+
 # PYCHARM FILES
 *.iml
 *.xml
