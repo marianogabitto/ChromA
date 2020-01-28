@@ -1,6 +1,7 @@
 from scipy.sparse import csr_matrix
 from scipy.io import mmwrite
 from collections import deque
+from ray.rllib.utils.memory import ray_get_and_free
 import multiprocessing
 import seaborn as sns
 import numpy as np
@@ -964,6 +965,7 @@ def count_fragments_bed(tsv_file, bed_file, cells_file):
     path_bed, bfile = os.path.split(bed_file)
 
     # Init Ray
+    print("Init Parallel Count Calculation")
     processors = int(multiprocessing.cpu_count()) - 1
     if not ray.is_initialized():
         ray.init(num_cpus=processors, object_store_memory=int(100e9), include_webui=False)
@@ -972,9 +974,29 @@ def count_fragments_bed(tsv_file, bed_file, cells_file):
     splits = int(np.floor(len(interval) / processors))
     if splits == 0:
         splits = 1
+    elif splits > 10000:
+        splits = 10000
+    print("Counting {} regions at a time.".format(splits))
     split_interval = [interval[i:i + splits] for i in np.arange(0, len(interval), splits, dtype=int)]
 
     # Split Calculations
+    counts = np.zeros((n_cells, 0), dtype=int)
+    while len(split_interval) > 0:
+        # Create Task
+        results = []
+        num_task = np.min([processors, len(split_interval)])
+        for i_ in np.arange(num_task, 1, -1):
+            results.append(filtering_tsv.remote(tsv_file, barcode_number, copy.copy(split_interval[i_])))
+        # Wait until finish
+        unfinished = list(np.arange(num_task))
+        while len(unfinished) > 0:
+            finished, unfinished = ray.wait(unfinished)
+        # Get Results
+        for i_ in np.arange(len(split_interval)):
+            temp = ray_get_and_free(results[i_])
+            counts = np.hstack([counts, temp])
+
+    """
     results = []
     for i_ in np.arange(len(split_interval)):
         results.append(filtering_tsv.remote(tsv_file, barcode_number, copy.copy(split_interval[i_])))
@@ -985,7 +1007,10 @@ def count_fragments_bed(tsv_file, bed_file, cells_file):
     for i_ in np.arange(len(split_interval)):
         temp = ray.get(results[i_])
         counts = np.hstack([counts, temp])
-
+    """
+    print("Finish Parallel Count Calculation")
+    # Clean up Ray resources and processes before the next example.
+    ray.shutdown()
     # #############################################################################
     # Writing Outputs
     print("Formating Outputs")

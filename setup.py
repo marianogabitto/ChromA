@@ -28,12 +28,15 @@ setup(
                         'seaborn',
                         'numpy>=1.16.2',
                         'pysam',
-                        'ray',
                         'scipy',
                         'setproctitle',
                         'psutil',
                         'nose',
-                        'bitarray'
+                        'bitarray',
+                        'ray',
+                        'ray[tune]',
+                        'ray[rllib]',
+                        'requests'
                         ],
       ext_modules=extensions,
       test_suite='nose.collector',
