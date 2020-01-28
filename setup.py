@@ -32,7 +32,8 @@ setup(
                         'scipy',
                         'setproctitle',
                         'psutil',
-                        'nose'
+                        'nose',
+                        'bitarray'
                         ],
       ext_modules=extensions,
       test_suite='nose.collector',

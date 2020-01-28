@@ -696,13 +696,13 @@ def read_bed(bed_file, avoid_header=False):
             print("Cannot Recognize Bed File Format")
             raise SystemExit
 
+        if avoid_header:
+            next(reader)
+
         for row in reader:
-            if avoid_header:
-                next(reader)
-            if (len(row)) > 2:
-                row[1] = int(row[1])
-                row[2] = int(row[2])
-                interval.append(row)
+            row[1] = int(row[1])
+            row[2] = int(row[2])
+            interval.append(row)
 
     return interval
 
@@ -951,31 +951,10 @@ def count_fragments_bed(tsv_file, bed_file, cells_file):
                     cell_list.append(row)
 
     # Reading Bed Regions
-    print("Reading Reads in Bed Regions")
-    try:
-        interval = list()
-        with open(bed_file, 'r') as f:
-            print("tab")
-            reader = csv.reader(f, delimiter='\t')
-            for row in reader:
-                if (len(row)) > 0:
-                    row[1] = int(row[1])
-                    row[2] = int(row[2])
-                    interval.append(row)
-    except:
-        interval = list()
-        with open(bed_file, 'r') as f:
-            print("space ")
-            reader = csv.reader(f, delimiter=' ')
-            for row in reader:
-                if (len(row)) > 0:
-                    row[1] = int(row[1])
-                    row[2] = int(row[2])
-                    interval.append(row)
+    interval = read_bed(bed_file)
 
     # Setting up containers
     n_cells = len(cell_list)
-    n_regions = len(interval)
     barcode_number = dict()
     for i, barcode in enumerate(cell_list):
         barcode_number[barcode[0]] = i
@@ -987,10 +966,12 @@ def count_fragments_bed(tsv_file, bed_file, cells_file):
     # Init Ray
     processors = int(multiprocessing.cpu_count()) - 1
     if not ray.is_initialized():
-        ray.init(num_cpus=processors, object_store_memory=int(40e9), include_webui=False)
+        ray.init(num_cpus=processors, object_store_memory=int(100e9), include_webui=False)
 
     # Split Load by Processor
     splits = int(np.floor(len(interval) / processors))
+    if splits == 0:
+        splits = 1
     split_interval = [interval[i:i + splits] for i in np.arange(0, len(interval), splits, dtype=int)]
 
     # Split Calculations
@@ -1075,7 +1056,7 @@ def filtering_fragments(fragments, barcodes):
 
 # ######################################################################
 # COUNT READS IN MOTIVES AND G+C CONTENT
-def count_motif(tsv_file, bed_file, cells_file, genome):
+def count_motif(tsv_file, bed_file, cells_file, genome='mouse'):
     # Re-write BedFile Center in Location.
     motif_bedfile, interv = rewrite_bedfile(input_file=bed_file, extension=100)
 
@@ -1087,17 +1068,16 @@ def count_motif(tsv_file, bed_file, cells_file, genome):
 
     # Map TFs to Peaks
     map_peaks_tfs = np.zeros(len(interv))
-    current_tf = ""
     tf_names = list()
-    for i_, int_ in interv:
-        if not(int_[3] == current_tf):
+    for i_, int_ in enumerate(interv):
+        if not (int_[3] in tf_names):
             tf_names.append(int_[3])
-        map_peaks_tfs[i_] = len(tf_names)
+        map_peaks_tfs[i_] = tf_names.index(int_[3])
 
     # Write TFs to File
     print("Writing TFs To File")
     path_bed, bfile = os.path.split(bed_file)
-    output_name1 = os.path.join(path_bed, bfile[:-3] + "_" + bfile[:-4] + "_tfname.bed")
+    output_name1 = os.path.join(path_bed, bfile[:-4] + "_tfname.bed")
     f = open(output_name1, "w")
     for i_, name_ in enumerate(tf_names):
         print(i_, name_, end='\n', sep='\t', file=f)
@@ -1106,10 +1086,11 @@ def count_motif(tsv_file, bed_file, cells_file, genome):
     # Write Map Peaks to TFs to File
     print("Writing Map Peaks to TFs To File")
     path_bed, bfile = os.path.split(bed_file)
-    output_name2 = os.path.join(path_bed, bfile[:-3] + "_" + bfile[:-4] + "_maptfs.bed")
+    output_name2 = os.path.join(path_bed, bfile[:-4] + "_maptfs.bed")
     f = open(output_name2, "w")
     for i_, tf_ in enumerate(map_peaks_tfs):
-        print(i_, tf_, gc_content[i_], tf_names[tf_], end='\n', sep='\t', file=f)
+        idx = int(tf_)
+        print(i_, idx, gc_content[i_], tf_names[idx], end='\n', sep='\t', file=f)
     f.close()
 
 
@@ -1121,11 +1102,11 @@ def rewrite_bedfile(input_file, extension=100):
     #  Writing Motif Bed Peaks
     print("Writing Motif Bed File")
     path_bed, bfile = os.path.split(input_file)
-    output_name = os.path.join(path_bed, bfile[:-3] + "_" + bfile[:-4] + "_motifpeaks.bed")
+    output_name = os.path.join(path_bed, bfile[:-4] + "_motifpeaks.bed")
     f = open(output_name, "w")
     for i, region in enumerate(intervals):
         center = np.mean(region[1:3])
-        print(region[0], center - extension, center + extension, region[3], end='\n', sep='\t', file=f)
+        print(region[0], int(center - extension), int(center + extension), region[3], end='\n', sep='\t', file=f)
     f.close()
 
     return output_name, intervals
@@ -1133,6 +1114,7 @@ def rewrite_bedfile(input_file, extension=100):
 
 def calculate_gc(gen, bed):
 
+    print("Calculating G+C Content for file:{}".format(bed))
     # Load G+C Structure into memory
     lchrom = species_chromosomes(gen)
 
@@ -1145,6 +1127,7 @@ def calculate_gc(gen, bed):
         with open(os.path.join(path, k_ + ".ba"), 'rb') as fh:
             chromosome.fromfile(fh)
         genome[k_] = chromosome
+    print("Calculating G+C Content. Genomic Information Sucesfully Loaded")
 
     # Read Bed File
     intervals = read_bed(bed, avoid_header=False)
