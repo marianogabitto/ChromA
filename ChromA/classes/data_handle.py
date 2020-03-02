@@ -63,11 +63,11 @@ def species_chromosomes(species):
         chrom_length = mouse_lens()
     elif species == 'human':
         chrom_length = human_lens()
-    elif species == fly:
+    elif species == 'fly':
         chrom_length = fly_lens()
     else:
         chrom_length = []
-        logging.error("ERROR:Wrong Species. {}".format(spec))
+        logging.error("ERROR:Wrong Species. {}".format(species))
         raise SystemExit
 
     return chrom_length
