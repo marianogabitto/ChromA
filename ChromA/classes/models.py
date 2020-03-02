@@ -12,7 +12,7 @@ import os
 
 class BayesianHsmmExperimentMultiProcessing:
     def __init__(self, states, pi_prior, tmat_prior, data=None, length=None, start=None, chrom=None,
-                 blacklisted=True, save=False, top_states=None, compute_regions=False, datatype='atac'):
+                 blacklisted=True, save=False, top_states=None, compute_regions=False, datatype='atac',):
 
         self.logger = logging.getLogger()
         self.species = None
@@ -75,7 +75,7 @@ class BayesianHsmmExperimentMultiProcessing:
         self.posterior.setField('tmat', tmat_prior, dims=('K', 'K'))
         self.posterior.setField('pi', pi_prior, dims='K')
 
-    def train(self, filename, iterations, species=None, single_chr=None, opt="mo"):
+    def train(self, filename, iterations, species=None, single_chr=None, opt="mo", savename=None, bedopts=None):
 
         # ##################################
         # Get Logger Info
@@ -131,67 +131,41 @@ class BayesianHsmmExperimentMultiProcessing:
             self.annotations_start = []
             for i_ in np.arange(len(self.states)):
                 # if single File. states is list of states
-                if type(self.states[0]) == type(states[0]):
+                if isinstance(self.states[0], type(states[0])):
                     self.states[i_] = copy.deepcopy(states[i_])
                 # if multiple Files. states is list of list of states
                 else:
                     self.states[i_] = copy.deepcopy(states[0][i_])
                 self.states[i_].prior = self.states[i_].posterior
 
-            chr_list = []
-            if species is None or single_chr is not None:
-                if single_chr is not None:
-                    chr_list = single_chr
-                else:
-                    self.logger.error('Species and single_chr cannot be None at the same time.')
-            elif species == 'mouse':
-                self.species = 'mouse'
-                chr_list = list(np.arange(1, 20))
-                chr_list.append('X')
-                chr_list.append('Y')
-                chr_list = data_handle.validate_chr(chr_list, filename, species)
-                self.logger.info('Running on mouse genome. Chroms:{}'.format(chr_list))
-            elif species == 'human':
-                self.species = 'human'
-                chr_list = list(np.arange(1, 23))
-                chr_list.append('X')
-                chr_list.append('Y')
-                chr_list = data_handle.validate_chr(chr_list, filename, species)
-                self.logger.info('Running on human genome. Chroms:{}'.format(chr_list))
-            elif species == 'fly':
-                self.species = 'fly'
-                chr_list = ['2L', '2R', '3L', '3R', '4', 'X', 'Y']
-                chr_list = data_handle.validate_chr(chr_list, filename, species)
-                self.logger.info('Running on fly genome. Chroms:{}'.format(chr_list))
+            # Identify Regions throughout Data
+            # TODO: MAKE VALIDATE_CHR PARSE ENTIRE GENOME EFFICIENTLY
+            regions = data_handle.validate_chr(filename, species, chr_list=single_chr)
+
+            # Distribute Regions Given Number of Processors
+            # TODO: DISTRIBUTE REGIONS ACCORDING TO NUMBER OF PROCESSORS
+            regions_split = list([regions])
 
             # Run Training in parallel
-            while len(chr_list) > 0:
+            while len(regions_split) > 0:
                 results = []
                 chromosome = []
-                for i_ in np.arange(np.min([processors, len(chr_list)])):
-                    chr_ = chr_list[0]
-                    self.logger.info("chr{}: Submitting job to Queue".format(chr_))
-                    chromosome.append(Trainer.remote(chr_, filename, species, self.blacklisted, self.states, self.prior,
+                num_task = np.min([processors, len(regions_split)])
+                for i_ in np.arange(num_task):
+                    reg_ = regions_split[0]
+                    self.logger.info("chr{}: Submitting job to Queue".format(reg_))
+                    chromosome.append(Trainer.remote(reg_, filename, species, self.blacklisted, self.states, self.prior,
                                                      self.top_states, pi=posterior.pi, tmat=posterior.tmat,
                                                      logger=logging.getLogger().getEffectiveLevel(), log_file=name,
                                                      datatype=self.datatype))
-                    results.append(chromosome[i_].train.remote(iterations=iterations, msg="chr{}: ".format(chr_)))
-                    chr_list.remove(chr_)
+                    results.append(chromosome[i_].train.remote(iterations=iterations, msg="chr{}: ".format(reg_)))
+                    regions_split.remove(reg_)
+
+                unfinished = list(np.arange(num_task))
+                while len(unfinished) > 0:
+                    finished, unfinished = ray.wait(unfinished)
 
                 # Collect Results
-                """
-                while len(results) > 0:
-                    ready, _ = ray.wait(results,timeout=1.0)
-                    if len(ready) > 0:
-                        for r_ in ready:
-                            res, _ = ray.get(r_)
-                            results.remove(r_)
-                            for l_ in np.arange(len(res[0])):
-                                self.annotations.append(res[0][l_])
-                                self.annotations_chr.append(res[1][l_])
-                                self.annotations_start.append(res[2][l_])
-                                self.annotations_length.append(res[3][l_])
-                """
                 for r_ in reversed(results):
                     res, _ = ray.get(r_)
                     for l_ in np.arange(len(res[0])):
@@ -199,6 +173,11 @@ class BayesianHsmmExperimentMultiProcessing:
                         self.annotations_chr.append(res[1][l_])
                         self.annotations_start.append(res[2][l_])
                         self.annotations_length.append(res[3][l_])
+                    #TODO: MAKE MESSAGE MORE EXPLICIT OF WHICH REGION I AM SAVING
+                    self.logger.info("Saving Bed File.")
+                    self.save_partial_bed(filename, savename, bedopts)
+
+        ray.shutdown()
 
     def save_bedfile(self, path, name=None, thres=0.05, ext=100, merge=500, filterpeaks=0):
         # Format Filename
@@ -225,6 +204,38 @@ class BayesianHsmmExperimentMultiProcessing:
         self.peaks = peaks
 
         self.logger.info("Saved Bed File. ")
+
+    def save_partial_bed(self, filename, name, bedopts=None):
+        # TODO: TUNE THIS TO WRITE CORRECTLY
+        if bedopts is None:
+            thres = 0.05
+            ext = 100
+            merge = 500
+            filterpeaks = 0
+        else:
+            thres = bedopts.thres
+            ext = bedopts.ext
+            merge = bedopts.merge
+            filterpeaks = bedopts.filterpeaks
+
+        path, filename = os.path.split(name)
+
+        # Format Regions
+        chromm = list()
+        for i_ in np.arange(len(self.annotations_chr)):
+            chromm.append(self.annotations_chr[i_][3:])
+
+        # Save Bed-File All States
+        regs = []
+        for l_ in np.arange(len(self.annotations)):
+            if self.annotations[0].shape[1] > 2:
+                regs.append(self.annotations[l_][:, 1:].sum(axis=1))
+            else:
+                regs.append(self.annotations[l_][:, 1])
+        peaks = data_handle.bed_result(os.path.join(path, name) + '_allpeaks.bed',
+                                       regs, self.annotations_start, chromm, threshold=thres,
+                                       bedext=ext, bedmerge=merge, filterpeaks=filterpeaks)
+        self.peaks = peaks
 
     def posterior_state(self, fname=os.getcwd()):
         chr_list = np.unique(self.annotations_chr)
@@ -282,8 +293,8 @@ class BayesianHsmmExperimentMultiProcessing:
 
 @ray.remote(num_cpus=1)
 class Trainer(object):
-    def __init__(self, chr_, filename, species, blacklisted, states, prior,
-                 top_states=None, pi=None, tmat=None, logger=None, log_file=None, datatype='atac'):
+    def __init__(self, regions, filename, states, prior,
+                 top_states=None, pi=None, tmat=None, logger=None, log_file=None):
         # Init Logging Module
         if logger is None:
             data_handle.build_logger('0', filename=log_file, supress=True)
@@ -311,28 +322,11 @@ class Trainer(object):
 
         # Getting Next Chromosome Data
         self.n_exp = len(filename)
-        if datatype == 'atac':
-            dnase = False
-        elif datatype == 'dnase':
-            dnase = True
-        else:
-            dnase = False
 
-        if chr_ == -1:
-            self.logger.info("Regions: Fetching Data")
-            data, length, start, chrom = data_handle.regions_th17(filename=filename,
-                                                                  species=species, dnase=dnase)
-        else:
-            chrom_str = "chr" + chr_.__str__()
-            self.logger.info(chrom_str + ": Fetching Data")
-            data, length, start, chrom = data_handle.regions_chr(filename=filename, chromosome=chrom_str,
-                                                                 species=species,
-                                                                 blacklisted=blacklisted, dnase=dnase)
-
-        self.data = data
-        self.length = length
-        self.start = start
-        self.chrom = chrom
+        self.data = regions[0]  #data
+        self.length = regions[1]  #length
+        self.start = regions[2]  #start
+        self.chrom = regions[3]  #chrom
 
         # Formatting Prior, Posterior
         self.prior = prior

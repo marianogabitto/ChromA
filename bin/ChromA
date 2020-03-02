@@ -160,7 +160,8 @@ def main(command_line=None):
                                                         compute_regions=options.regions,
                                                         pi_prior=pi_prior, tmat_prior=tmat_prior,
                                                         blacklisted=options.blacklisted, datatype=options.data)
-    hsmm.train(filename=options.filename, species=options.species, iterations=options.iterations)
+    hsmm.train(filename=options.filename, species=options.species, iterations=options.iterations,
+               savename=options.savebed, bedopts=bedopts)
     # #############################################
     # #############################################
 
@@ -177,13 +178,8 @@ def main(command_line=None):
         logger.info("Saving Posterior State.")
         hsmm.posterior_state(fname=options.save_bed)
 
-    if options.save_bed is not None:
-        logger.info("Saving Bed File.")
-        path, filename = os.path.split(options.save_bed)
-        hsmm.save_bedfile(path=path, name=filename, thres=bedopts.thres, ext=bedopts.ext,
-                          merge=bedopts.merge, filterpeaks=bedopts.filterpeaks)
-        if (not options.no_metrics) and (options.data == 'atac'):
-            dh.metrics(filename=options.filename, annotations=hsmm.peaks, species=options.species)
+    if (not options.no_metrics) and (options.data == 'atac'):
+        dh.metrics(filename=options.filename, annotations=hsmm.peaks, species=options.species)
     # #############################################
     # #############################################
 

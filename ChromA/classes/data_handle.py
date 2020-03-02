@@ -221,20 +221,25 @@ def validate_inputs(files=None, species=None, datatype='atac'):
     return
 
 
-def validate_chr(chrom_list, filenames, spec):
-
+def validate_chr(filenames, spec, specfile=None, chr_list=None):
     chrom_length = species_chromosomes(spec)
+    if chr_list is None:
+        chrom_list = list(chrom_length.keys())
+    else:
+        chrom_list = chr_list
+
     chrom_out = copy.copy(chrom_list)
 
     for chr_ in chrom_list:
         for f_ in filenames:
+            # CHECK FILE EXIST
             if not os.path.isfile(f_):
                 logging.error("ERROR:File does not exists. {}".format(f_))
                 raise SystemExit
 
+            # CHECK NUMBER OF READS IN CHROMOSOME GREATER THAN 100
             try:
                 chromosome = 'chr' + str(chr_)
-                # [l.split('\t') for l in pysam.idxstats(f_).split('\n')]
                 reads = chr_reads([f_], chromosome, 1, int(chrom_length[chromosome]))
                 if np.sum(reads) < 100:
                     chrom_out.remove(chr_)
@@ -242,6 +247,9 @@ def validate_chr(chrom_list, filenames, spec):
             except:
                 chrom_out.remove(chr_)
                 break
+
+    logger = logging.getLogger()
+    logger.info('Running on {} genome. Chroms:{}'.format(spec, chr_list))
 
     return chrom_out
 
