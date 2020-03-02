@@ -56,6 +56,15 @@ def fly_lens():
     return lens
 
 
+def ciona_lens():
+    lens = {'chr1': 10041005, 'chr2': 7758925, 'chr3': 6703989, 'chr4': 5505748,
+            'chr5': 5035970, 'chr6': 2365711, 'chr7': 6125209, 'chr8': 6398795,
+            'chr9': 6586237, 'chr10': 4880875, 'chr11': 5152901, 'chr12': 5356124,
+            'chr13': 1792679, 'chr14': 4591987}
+
+    return lens
+
+
 def species_chromosomes(species):
 
     if species == 'mouse':
@@ -64,11 +73,73 @@ def species_chromosomes(species):
         chrom_length = human_lens()
     elif species == 'fly':
         chrom_length = fly_lens()
+    elif species == 'ciona':
+        chrom_length = ciona_lens()
     else:
-        logging.error("ERROR:Wrong Species. {}".format(species))
+        logging.error("ERROR: Wrong Species. {}".format(species))
         raise SystemExit
 
     return chrom_length
+
+
+def species_regions(species):
+    if species == 'mouse':
+        regions_list = [['chr16', 32580000, 32670000],
+                        ['chr8', 105610000, 105705000],
+                        ['chr9', 106180000, 106250000],
+                        ['chr7', 45098000, 45160000],
+                        ['chr5', 142840000, 142952000],
+                        ['chr11', 100849000, 100945000],
+                        ['chr12', 85666000, 85761000],
+                        ['chr5', 32095000, 32190000],
+                        ['chr13', 30732000, 30825000],
+                        ['chr3', 94303000, 94399000]]
+    elif species == 'human':
+        regions_list = [['chr3', 195750000, 195850000],
+                        ['chr16', 67590000, 67691000],
+                        ['chr3', 52215600, 52316600],
+                        ['chr19', 49940000, 50041000],
+                        ['chr7', 5487000, 5588300],
+                        ['chr17', 40450000, 40550440],
+                        ['chr14', 75950000, 76050000],
+                        ['chr2', 28570000, 28670000],
+                        ['chr6', 371000, 471000],
+                        ['chr3', 128440000, 128540000]]
+    elif species == 'fly':
+        regions_list = [['chr3L', 7329969, 7379929],
+                        ['chr3R', 5600000, 5650000],
+                        ['chr4', 1050000, 1100000],
+                        ['chr4', 670000, 720000],
+                        ['chr2L', 10215000, 10265000]]
+    else:
+        logging.info("WARNING: Species {} not found.".format(species))
+        regions_list = []
+        quit()
+
+    return regions_list
+
+
+def species_promoters(species):
+
+    chroma_root = os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+    chrom_lens = species_chromosomes(species)
+
+    if species == 'mouse':
+        prom = chroma_root + "/data/promoters/prom_mm10_genes.bed"
+        reference_chromosome = 'chr1'
+    elif species == 'fly':
+        prom = chroma_root + "/data/promoters/prom_dmel6_genes.bed"
+        reference_chromosome = 'chr3R'
+    elif species == 'human':
+        prom = chroma_root + "/data/promoters/prom_hg19_genes.bed"
+        reference_chromosome = 'chr1'
+    elif species == 'ciona':
+        prom = chroma_root + "/data/promoters/prom_ciona_genes.bed"
+        reference_chromosome = 'chr1'
+    else:
+        prom, reference_chromosome = [], []
+
+    return chrom_lens, prom, reference_chromosome
 
 
 def build_logger(verbose_mode, filename=None, supress=False):
@@ -109,79 +180,34 @@ def build_logger(verbose_mode, filename=None, supress=False):
     logger_metric.addHandler(mhandler)
 
 
-def validate_inputs(files=None, species=None, datatype='atac'):
+def validate_inputs(files=None):
+    """
+    The purpose of this routine is to validate the existence of the files
+    and in certain cases, try to read the correct file format.
+    :param files: List of files to be annotated
+    :return:
+    """
 
     logger = logging.getLogger()
     logger.info("Validating Inputs")
     if files is None:
         logging.error("ERROR: No input files")
-    if datatype == 'dnase':
-        dnase = True
-    else:
-        dnase = False
 
     for f_ in files:
         if not os.path.isfile(f_):
             logging.error("ERROR:File does not exists. {}".format(f_))
             raise SystemExit
 
-        # TRY TO VALIDATE BAM
-        if f_.split('.')[-1] == 'bam':
+        # TRY TO VALIDATE BAM OR TABIX FILE
+        if (f_.split('.')[-1] == 'bam') or (f_.split('.')[-1] == 'gz'):
             try:
-                if species == 'fly':
-                    chr_reads([f_], 'chr3R', 5624047, 5625400, dnase=dnase)
-                else:
-                    chr_reads([f_], 'chr1', 63980000, 64080000 + 100, dnase=dnase)
+                pyfile = pysam.AlignmentFile(f_)
+                _ = pyfile.header
             except:
                 logging.error("ERROR:Could not read file as BAM format. {}".format(f_))
                 raise SystemExit
 
-        # TRY TO VALIDATE TABIX FILE
-        elif f_.split('.')[-1] == 'gz':
-            try:
-                if species == 'fly':
-                    chr_reads([f_], 'chr3R', 5624047, 5625400, dnase=dnase)
-                else:
-                    chr_reads([f_], 'chr1', 63980000, 64080000 + 100, dnase=dnase)
-            except:
-                logging.error("ERROR:Could not read file as TABIX format. {}".format(f_))
-                raise SystemExit
-
-        # TRY TO VALIDATE BEDGRAPH FILE
-        elif f_.split('.')[-1] == 'bedgraph':
-            try:
-                with open(f_, 'r') as f:
-                    reader = csv.reader(f, delimiter='\t')
-                    row = next(reader)
-                    assert (row[0][:3] == 'chr')
-                    assert (int(row[1]) >= 0)
-                    assert (int(row[2]) >= 0)
-                    assert (int(row[3]) >= 0)
-
-                path, name = os.path.split(f_)
-                if not os.path.isfile(os.path.join(path, '{}_reads.npy'.format(name))):
-                    logging.info("Preprocessing BEDGRAPH file: {}".format(f_))
-                    with open(f_, 'r') as f:
-                        max_size = len(f.readlines())
-
-                    with open(f_, 'r') as f:
-                        reads_array = np.zeros(max_size, dtype='|S5, int, int, int')
-                        reader = csv.reader(f, delimiter='\t')
-                        idx = 0
-                        for row in reader:
-                            reads_array[idx][0] = row[0]
-                            reads_array[idx][1] = row[1]
-                            reads_array[idx][2] = row[2]
-                            reads_array[idx][3] = int(float(row[3]))
-                            idx += 1
-
-                    np.save(os.path.join(path, '{}_reads.npy'.format(name)), reads_array)
-
-            except:
-                logging.error("ERROR:Could not read file as BEDGRAPH format.{}".format(f_))
-                raise SystemExit
-
-        # TRY TO VALIDATE AS 3 COLUMNS BED OR TSV
+        # TRY TO VALIDATE AS 3 COLUMNS TSV, BED OR BEDGRAPH FILE
         else:
             try:
                 with open(f_, 'r') as f:
@@ -191,28 +217,10 @@ def validate_inputs(files=None, species=None, datatype='atac'):
                     assert(int(row[1]) > 0)
                     assert(int(row[2]) > 0)
 
-                path, name = os.path.split(f_)
-                if not os.path.isfile(os.path.join(path, '{}_reads.npy'.format(name))):
-                    logging.info("Preprocessing TSV file: {}".format(f_))
-                    logging.info("Index file as tabix for accelerated performance")
-                    with open(f_, 'r') as f:
-                        max_size = len(f.readlines())
-
-                    with open(f_, 'r') as f:
-                        reads_array = np.zeros(max_size, dtype='|S5, int, int, int')
-                        reader = csv.reader(f, delimiter='\t')
-                        idx = 0
-                        for row in reader:
-                            reads_array[idx][0] = row[0]
-                            reads_array[idx][1] = row[1]
-                            reads_array[idx][2] = row[2]
-                            # reads_array[idx][3] = row[4]
-                            idx += 1
-
-                    np.save(os.path.join(path, '{}_reads.npy'.format(name)), reads_array)
+                preprocess_bedlike(f_)
 
             except:
-                logging.error("ERROR:Could not read file as 3 columns TSV/BED format.{}".format(f_))
+                logging.error("ERROR:Could not read file as 3 columns TSV/BED/BEDGRAPH format.{}".format(f_))
                 raise SystemExit
 
     logger.info("Inputs Validated")
@@ -220,20 +228,26 @@ def validate_inputs(files=None, species=None, datatype='atac'):
     return
 
 
-def validate_chr(chrom_list, filenames, spec):
+def validate_chr(filenames, spec, chr_list=None):
 
     chrom_length = species_chromosomes(spec)
+    if chr_list is None:
+        chrom_list = list(chrom_length.keys())
+    else:
+        chrom_list = chr_list
+
     chrom_out = copy.copy(chrom_list)
 
     for chr_ in chrom_list:
         for f_ in filenames:
+            # CHECK FILE EXIST
             if not os.path.isfile(f_):
                 logging.error("ERROR:File does not exists. {}".format(f_))
                 raise SystemExit
 
+            # CHECK NUMBER OF READS IN CHROMOSOME GREATER THAN 100
             try:
                 chromosome = 'chr' + str(chr_)
-                # [l.split('\t') for l in pysam.idxstats(f_).split('\n')]
                 reads = chr_reads([f_], chromosome, 1, int(chrom_length[chromosome]))
                 if np.sum(reads) < 100:
                     chrom_out.remove(chr_)
@@ -242,107 +256,42 @@ def validate_chr(chrom_list, filenames, spec):
                 chrom_out.remove(chr_)
                 break
 
+    logger = logging.getLogger()
+    logger.info('Running on mouse genome. Chroms:{}'.format(chr_list))
+
     return chrom_out
 
 
 def regions_th17(filename=None, species='mouse', dnase=False):
-    # ############################################
-    # MOUSE REGIONS
-    # Tfrc: chr16:32, 580, 000 - 32, 670, 000
-    # CTCF: chr8:105, 610, 000 - 105, 705, 000
-    # Alas1: chr9:106, 180, 000 - 106, 250, 000
-    # Rpl13a: chr7:45, 098, 000 - 45, 160, 000
-    # Actb: chr5:142, 880, 000 - 142, 950, 000
-    # Stat3: chr11:100, 849, 000 - 100, 945, 000
-    # BATF: chr12:85, 666, 000 - 85, 761, 000
-    # Fosl2: chr5:32, 095, 000 - 32, 190, 000
-    # IRF4: chr13:30, 732, 000 - 30, 825, 000
-    # Rorc: chr3:94, 303, 000 - 94, 399, 000
-    # #############################################
-
-    # ############################################
-    # HUMAN REGIONS
-    # Tfrc: chr3:195, 750, 000 - 195, 850, 000
-    # Ctcf: chr16:67, 590, 000 - 67, 691, 000
-    # Alas1: chr3:52, 215, 600 - 52, 316, 600
-    # Rpl13a: chr19:49, 940, 000 - 50, 041, 000
-    # Actb:chr7:5, 487, 000 - 5, 588, 300
-    # Stat3: chr17:40, 450, 000 - 40, 550, 440
-    # Batf: chr14:75, 950, 000 - 76, 050, 000
-    # Fosl2: chr2:28, 570, 000 - 28, 670, 000
-    # Irf4: chr6:371, 000 - 471, 000
-    # Rab7A: chr3:128, 440, 000 - 128, 540, 000
-    # #############################################
-
-    # ############################################
-    # FLY REGIONS
-    # CTCF:     chr3L: 7,329,969 - 7,379,929
-    # Rpl13a:   chr3R: 5,600,000 - 5,650,000
-    # Actb:     chr4: 1,050,000 - 1,100,000
-    # ey:       chr4:   670,000 - 720,000
-    # Ror:      chr2L: 10,215,000 - 10, 265, 000
-    # #############################################
 
     logger = logging.getLogger()
-
-    if species == 'mouse':
-        regions_list = [['chr16', 32580000, 32670000],
-                        ['chr8', 105610000, 105705000],
-                        ['chr9', 106180000, 106250000],
-                        ['chr7', 45098000, 45160000],
-                        ['chr5', 142840000, 142952000],
-                        ['chr11', 100849000, 100945000],
-                        ['chr12', 85666000, 85761000],
-                        ['chr5', 32095000, 32190000],
-                        ['chr13', 30732000, 30825000],
-                        ['chr3', 94303000, 94399000]]
-    elif species == 'human':
-        regions_list = [['chr3', 195750000, 195850000],
-                        ['chr16', 67590000, 67691000],
-                        ['chr3', 52215600, 52316600],
-                        ['chr19', 49940000, 50041000],
-                        ['chr7', 5487000, 5588300],
-                        ['chr17', 40450000, 40550440],
-                        ['chr14', 75950000, 76050000],
-                        ['chr2', 28570000, 28670000],
-                        ['chr6', 371000, 471000],
-                        ['chr3', 128440000, 128540000]]
-    elif species == 'fly':
-        regions_list = [['chr3L', 7329969, 7379929],
-                        ['chr3R', 5600000, 5650000],
-                        ['chr4', 1050000, 1100000],
-                        ['chr4', 670000, 720000],
-                        ['chr2L', 10215000, 10265000]]
-    else:
-        print('Wrong species name: mouse/human/fly')
-        regions_list = 1
-        quit()
-
     if filename is None:
-        quit()
+        logger.error('File Not Found.')
+        raise SystemExit
 
-    logger.info("Obtaining Curated Regions")
-    obs_vec = []
-    length = []
-    start_l = []
-    chrom_l = []
-    for l_ in np.arange(len(regions_list)):
+    regions_list = species_regions(species)
 
-        chrom = regions_list[l_][0]
-        start = regions_list[l_][1]
-        end = regions_list[l_][2]
+    if len(regions_list) > 0:
+        logger.info("Obtaining Curated Regions")
+        obs_vec = []
+        length = []
+        start_l = []
+        chrom_l = []
+        for l_ in np.arange(len(regions_list)):
 
-        obs_vec.append(chr_reads(filename, chrom, start, end, dnase=dnase))
-        length.append(end - start)
-        start_l.append(start)
-        chrom_l.append(chrom)
+            chrom = regions_list[l_][0]
+            start = regions_list[l_][1]
+            end = regions_list[l_][2]
 
-    logger.info("Computing Observations")
-    out_data = np.concatenate(obs_vec)
-    # out_data = out_data - 5
-    # out_data[out_data < 0] = 0
-    # idx = out_data[:, 0, 0] > 20
-    # out_data[idx, 0, 0] = 20
+            obs_vec.append(chr_reads(filename, chrom, start, end, dnase=dnase))
+            length.append(end - start)
+            start_l.append(start)
+            chrom_l.append(chrom)
+
+        logger.info("Computing Observations")
+        out_data = np.concatenate(obs_vec)
+    else:
+        out_data, length, start_l, chrom_l = [], [], [], []
 
     return out_data, length, start_l, chrom_l
 
@@ -350,16 +299,7 @@ def regions_th17(filename=None, species='mouse', dnase=False):
 def regions_chr(filename=None, chromosome=None, species='mouse', blacklisted=True, dnase=False):
 
     logger = logging.getLogger()
-    # Validate Species
-    if species == 'mouse':
-        chrom_lens = mouse_lens()
-    elif species == 'human':
-        chrom_lens = human_lens()
-    elif species == 'fly':
-        chrom_lens = fly_lens()
-    else:
-        logger.error('Wrong species name: mouse/human')
-        raise SystemExit
+    chrom_lens = species_chromosomes(species)
 
     # Validate Chromosome Name
     if chromosome is None:
@@ -793,29 +733,32 @@ def blacklist_reads(data, bl, chrom, start, length):
                     data[st_bl:end_bl, :] = 0
 
 
+def preprocess_bedlike(file):
+    path, name = os.path.split(file)
+    if not os.path.isfile(os.path.join(path, '{}_reads.npy'.format(name))):
+        logging.info("Preprocessing TSV file: {}".format(file))
+        logging.info("Index file as tabix for accelerated performance")
+        with open(file, 'r') as f:
+            max_size = len(f.readlines())
+
+        with open(file, 'r') as f:
+            reads_array = np.zeros(max_size, dtype='|S5, int, int')
+            reader = csv.reader(f, delimiter='\t')
+            idx = 0
+            for row in reader:
+                reads_array[idx][0] = row[0]
+                reads_array[idx][1] = row[1]
+                reads_array[idx][2] = row[2]
+                idx += 1
+
+        np.save(os.path.join(path, '{}_reads.npy'.format(name)), reads_array)
+
+
 # ######################################################################
 # FILE METRICS
 def frip_sn(annot, spec='mouse', file=None, dnase=False):
 
-    # Validate Species
-    chroma_root = os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-
-    # ALL METRICS ARE COMPUTED ON A REFERENCE CHROMOSOME PER SPECIEs
-    if spec == 'mouse':
-        chrom_lens = mouse_lens()
-        prom = chroma_root + "/data/promoters/prom_mm10_genes.bed"
-        reference_chromosome = 'chr1'
-    elif spec == 'fly':
-        chrom_lens = fly_lens()
-        prom = chroma_root + "/data/promoters/prom_dmel6_genes.bed"
-        reference_chromosome = 'chr3R'
-    elif spec == 'human':
-        chrom_lens = human_lens()
-        prom = chroma_root + "/data/promoters/prom_hg19_genes.bed"
-        reference_chromosome = 'chr1'
-    else:
-        raise AssertionError
-
+    chrom_lens, prom, reference_chromosome = species_promoters(spec)
     approx_coef = chrom_lens[reference_chromosome] / np.sum(list(chrom_lens.values()))
 
     # Validate File
@@ -882,11 +825,12 @@ def metrics(filename, annotations=None, species=None):
         if annotations is None:
             logger.info("Run ChromA to compute FRIP.")
         else:
-            frip_calc, sn, ins_size, number_r = frip_sn(annotations, species, [f_])
-            logger.info("FRIP: {0:3.3f}".format(frip_calc))
-            logger.info("Signal To Noise: {0:3.3f}".format(sn))
-            logger.info("Insert Size Metric (Ratio MonoNuc to Nuc-Free): {0:3.3f}".format(ins_size))
-            logger.info("Number of Reads (Extrapolated from Chromosome 1): {0:5.0e}".format(number_r))
+            if (species is not None) and (species is not "new"):
+                frip_calc, sn, ins_size, number_r = frip_sn(annotations, species, [f_])
+                logger.info("FRIP: {0:3.3f}".format(frip_calc))
+                logger.info("Signal To Noise: {0:3.3f}".format(sn))
+                logger.info("Insert Size Metric (Ratio MonoNuc to Nuc-Free): {0:3.3f}".format(ins_size))
+                logger.info("Number of Reads (Extrapolated from Chromosome 1): {0:5.0e}".format(number_r))
 
 
 # ######################################################################

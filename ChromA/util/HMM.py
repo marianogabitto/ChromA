@@ -1,7 +1,5 @@
 from .LibFwdBwd import FwdBwdAlg_cpp
-
 from scipy.special import psi
-import multiprocessing
 import numpy as np
 
 
@@ -142,7 +140,7 @@ def message_passing_incremental(pi, tmat, states, n_expanded, n_compress, length
         if likelihood is None:
             log_xpd_pi, log_xpd_tmat, log_xpd_likelihood = log_expand(pi, tmat, states, n_expanded, n_compress,
                                                                       obs1=data[st:end, None], likelihood=likelihood)
-        elif data is None:
+        else:
             log_xpd_pi, log_xpd_tmat, log_xpd_likelihood = log_expand(pi, tmat, states, n_expanded, n_compress,
                                                                       obs1=data, likelihood=likelihood[st:end])
 
@@ -232,7 +230,8 @@ def message_passing_multi(pi, tmat, states, top_states, s_s, n_exp, n_expanded, 
                                                                           obs2=s_s[st:end, :])
             else:
                 log_xpd_pi, log_xpd_tmat, log_xpd_likelihood = log_expand(pi, tmat, states[e_], n_expanded, n_compress,
-                                                                          obs1=data[st:end, e_][:, None], obs2=s_s[st:end, :])
+                                                                          obs1=data[st:end, e_][:, None],
+                                                                          obs2=s_s[st:end, :])
             resp, resp_pair, l_marg_prob_temp = fw_bw(log_xpd_pi, log_xpd_tmat, log_xpd_likelihood)
 
             # Compress Matrices

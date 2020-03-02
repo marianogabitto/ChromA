@@ -1,24 +1,13 @@
 from ..util.HMM import message_passing_multi, message_passing_posterior_state, message_passing_incremental
 from ..util.ParamStorage import ParamStorage
-from ..classes import data_handle, states
+from ..classes import data_handle
 
 import multiprocessing
 import numpy as np
 import logging
 import copy
-import ray
+import ray as ray
 import os
-
-import matplotlib
-gui_env = ['TKAgg', 'Agg', 'GTKAgg', 'Qt4Agg', 'WXAgg']
-for gui in gui_env:
-    try:
-        matplotlib.use(gui, warn=False, force=True)
-        from matplotlib import pyplot as plt
-        break
-    except:
-        continue
-from matplotlib.backends.backend_pdf import PdfPages
 
 
 class BayesianHsmmExperimentMultiProcessing:
@@ -88,14 +77,14 @@ class BayesianHsmmExperimentMultiProcessing:
 
     def train(self, filename, iterations, species=None, single_chr=None, opt="mo"):
 
-        # ##################################
+        # ######################################################################################################
         # Get Logger Info
         if hasattr(self.logger.handlers[0], "baseFilename"):
             name = self.logger.handlers[0].baseFilename
         else:
             name = None
 
-        # ##################################
+        # ######################################################################################################
         # Defining Ray Environment
         processors = multiprocessing.cpu_count()
         if processors > 22:
@@ -112,7 +101,7 @@ class BayesianHsmmExperimentMultiProcessing:
         if not ray.is_initialized():
             ray.init(num_cpus=int(processors), object_store_memory=memo, include_webui=False)
 
-        # ##################################
+        # ######################################################################################################
         # Running Regions
         self.logger.info("Training on Regions")
         results = []
@@ -134,46 +123,23 @@ class BayesianHsmmExperimentMultiProcessing:
         # Validate Results
         self.validate_regions()
 
-        # ##################################
+        # ######################################################################################################
         # Running Chromosomes
         if not self.compute_regions:
+            # Prepare data structures and carry over states from Regions
             self.annotations = []
             self.annotations_chr = []
             self.annotations_start = []
             for i_ in np.arange(len(self.states)):
-                # if single File. states is list of states
-                if type(self.states[0]) == type(states[0]):
+                if isinstance(type(self.states[0]), type(states[0])):
                     self.states[i_] = copy.deepcopy(states[i_])
-                # if multiple Files. states is list of list of states
                 else:
                     self.states[i_] = copy.deepcopy(states[0][i_])
                 self.states[i_].prior = self.states[i_].posterior
 
-            chr_list = []
-            if species is None or single_chr is not None:
-                if single_chr is not None:
-                    chr_list = single_chr
-                else:
-                    self.logger.error('Species and single_chr cannot be None at the same time.')
-            elif species == 'mouse':
-                self.species = 'mouse'
-                chr_list = list(np.arange(1, 20))
-                chr_list.append('X')
-                chr_list.append('Y')
-                chr_list = data_handle.validate_chr(chr_list, filename, species)
-                self.logger.info('Running on mouse genome. Chroms:{}'.format(chr_list))
-            elif species == 'human':
-                self.species = 'human'
-                chr_list = list(np.arange(1, 23))
-                chr_list.append('X')
-                chr_list.append('Y')
-                chr_list = data_handle.validate_chr(chr_list, filename, species)
-                self.logger.info('Running on human genome. Chroms:{}'.format(chr_list))
-            elif species == 'fly':
-                self.species = 'fly'
-                chr_list = ['2L', '2R', '3L', '3R', '4', 'X', 'Y']
-                chr_list = data_handle.validate_chr(chr_list, filename, species)
-                self.logger.info('Running on fly genome. Chroms:{}'.format(chr_list))
+            # Prune chromosomes
+            self.species = species
+            chr_list = data_handle.validate_chr(filename, species, chr_list=single_chr)
 
             # Run Training in parallel
             while len(chr_list) > 0:
