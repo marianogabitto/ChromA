@@ -103,7 +103,7 @@ class BayesianHsmmExperimentMultiProcessing:
                 memo = ray.utils.get_system_memory()
                 self.logger.info("Recommended Memory > 80GB".format(memo))
             else:
-                memo = int(100e9)
+                memo = int(150e9)
         else:
             self.logger.info("Number of Recommended Processors is > 22".format(int(processors)))
             memo = ray.utils.get_system_memory()
