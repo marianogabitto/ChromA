@@ -371,7 +371,7 @@ class NegativeBinomialGEO:
 
 
 class TopStateNegativeBinomial:
-    def __init__(self, r, p=None, s_count=None, f_count=None, toptmat0=None, order=None):
+    def __init__(self, r, p=None, s_count=None, f_count=None, toptmat0=None, order=None, mu0=None, sigma02=None):
 
         # Parameter Dimensions
         # self.n_obs, self.k = s_s.shape
@@ -383,6 +383,7 @@ class TopStateNegativeBinomial:
         self.ss.append(np.zeros((self.k, self.k)))
 
         # Number of expanded states
+        self.n = r
         self.r = r
 
         # Order in the array

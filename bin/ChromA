@@ -37,7 +37,7 @@ def main(command_line=None):
     parser_dnase.add_argument('-nome', '--no-metrics', action='store', dest='no_metrics', type=bool, required=False,
                               default=False, help='Flag to Compute Metrics. (default is True).')
     parser_dnase.add_argument('-r', '--states', nargs='+', action='store', dest='r', type=float, required=False,
-                              default=None, help='Control State Properties. (default is None).')
+                              default=None, help='Control State Properties. Order: r1 r2 p1 p2 (default is None).')
     parser_dnase.set_defaults(data='dnase')
 
     parser_atac = subparsers.add_parser('atac', help='Run ChromA for ATAC experiments.')
@@ -58,7 +58,7 @@ def main(command_line=None):
                              default='mouse', choices=['mouse', 'human', 'fly'],
                              help='Genome Species.(default = mouse, optional)')
     parser_atac.add_argument('-r', '--states', nargs='+', action='store', dest='r', type=float, required=False,
-                             default=None, help='Control State Properties. (default is None).')
+                             default=None, help='Control State Properties. Order: r1 r2 p1 p2 (default is None).')
     parser_atac.set_defaults(data='atac')
 
     parser_cutrun = subparsers.add_parser('Cutrun', help='Run ChromA for CutRun experiments.')
@@ -75,7 +75,7 @@ def main(command_line=None):
                                default='mouse', choices=['mouse', 'human', 'fly'],
                                help='Genome Species.(default = mouse, optional)')
     parser_cutrun.add_argument('-r', '--states', nargs='+', action='store', dest='r', type=float, required=False,
-                               default=None, help='Control State Properties. (default is None).')
+                               default=None, help='Control State Properties. Order: r1 r2 p1 p2 (default is None).')
     parser_cutrun.add_argument('-cont', '--control', action='store', dest='control', type=str, required=False,
                                default=None, help='Control Experiment. (default is None).')
     parser_cutrun.set_defaults(data='cutrun')
