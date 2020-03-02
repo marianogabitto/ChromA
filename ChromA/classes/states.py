@@ -38,7 +38,10 @@ def build_states(typ='atac', filename=None, r=None):
             top_states.append(top_closed_state)
             top_states.append(top_open_state)
 
-        bedopts = BedOptions(thres=r[4], ext=r[5], merge=r[6], filterpeaks=r[7])
+        if len(r) > 3:
+            bedopts = BedOptions(thres=r[4], ext=r[5], merge=r[6], filterpeaks=r[7])
+        else:
+            bedopts = BedOptions()
 
     elif typ == "atac":
         r1 = 3
