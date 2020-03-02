@@ -5,7 +5,6 @@ import multiprocessing
 import seaborn as sns
 import numpy as np
 import logging
-import pickle
 import pysam
 import copy
 import ray
@@ -63,11 +62,10 @@ def species_chromosomes(species):
         chrom_length = mouse_lens()
     elif species == 'human':
         chrom_length = human_lens()
-    elif species == fly:
+    elif species == 'fly':
         chrom_length = fly_lens()
     else:
-        chrom_length = []
-        logging.error("ERROR:Wrong Species. {}".format(spec))
+        logging.error("ERROR:Wrong Species. {}".format(species))
         raise SystemExit
 
     return chrom_length
@@ -360,18 +358,18 @@ def regions_chr(filename=None, chromosome=None, species='mouse', blacklisted=Tru
     elif species == 'fly':
         chrom_lens = fly_lens()
     else:
-        chrom_lens = []
         logger.error('Wrong species name: mouse/human')
+        raise SystemExit
 
     # Validate Chromosome Name
     if chromosome is None:
-        chr_ = []
         logger.error("Forgot chromosome name. Try chrX")
+        raise SystemExit
     elif chromosome in chrom_lens.keys():
         chr_ = chromosome
     else:
-        chr_ = []
         logger.error("Wrong chromosome name. Try chrX")
+        raise SystemExit
 
     # Compute Coverage of chromosome
     logger.info(chr_ + ": Computing Coverage")
@@ -663,25 +661,23 @@ def count_reads(file, species):
 
 # ######################################################################
 # BEDFILES ROUTINES
-def read_bed(bed_file, avoid1=True):
+def read_bed(bed_file):
     interval = []
 
     try:
         with open(bed_file, 'r') as f:
             reader = csv.reader(f, delimiter='\t')
             for row in reader:
-#                if (len(row)) > 0:
-                    row[1] = int(row[1])
-                    row[2] = int(row[2])
-                    interval.append(row)
+                row[1] = int(row[1])
+                row[2] = int(row[2])
+                interval.append(row)
     except:
         with open(bed_file, 'r') as f:
             reader = csv.reader(f, delimiter=' ')
             for row in reader:
- #               if (len(row)) > 0:
-                    row[1] = int(row[1])
-                    row[2] = int(row[2])
-                    interval.append(row)
+                row[1] = int(row[1])
+                row[2] = int(row[2])
+                interval.append(row)
 
     return interval
 
@@ -818,9 +814,6 @@ def frip_sn(annot, spec='mouse', file=None, dnase=False):
         prom = chroma_root + "/data/promoters/prom_hg19_genes.bed"
         reference_chromosome = 'chr1'
     else:
-        chrom_lens = []
-        prom = []
-        reference_chromosome = []
         raise AssertionError
 
     approx_coef = chrom_lens[reference_chromosome] / np.sum(list(chrom_lens.values()))
@@ -857,7 +850,7 @@ def frip_sn(annot, spec='mouse', file=None, dnase=False):
 
     # Calculate Insert Size Distribution
     ins = np.array(ins)
-    ins_calc = (np.sum(ins[(ins < 210) * (ins > 190)]) / (1 + np.sum(ins[(ins < 80) * (ins > 60)])) )
+    ins_calc = (np.sum(ins[(ins < 210) * (ins > 190)]) / (1 + np.sum(ins[(ins < 80) * (ins > 60)])))
 
     try:
         fig1 = plt.figure()
@@ -954,7 +947,6 @@ def count_fragments_bed(tsv_file, bed_file, cells_file):
 
     # Setting up containers
     n_cells = len(cell_list)
-    n_regions = len(interval)
     barcode_number = dict()
     for i, barcode in enumerate(cell_list):
         barcode_number[barcode[0]] = i
