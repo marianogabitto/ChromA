@@ -5,7 +5,6 @@ import multiprocessing
 import seaborn as sns
 import numpy as np
 import logging
-import pickle
 import pysam
 import copy
 import ray

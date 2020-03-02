@@ -1,10 +1,5 @@
 from setuptools import setup, Extension
 import setuptools
-import os
-
-from setuptools.command.install import install
-from setuptools.command.develop import develop
-from setuptools.command.egg_info import egg_info
 
 extensions = [Extension("libfwdbwdcpp",
                         ["ChromA/util/FwdBwd.cpp"],
@@ -12,7 +7,7 @@ extensions = [Extension("libfwdbwdcpp",
 
 setup(
       name='ChromA',
-      version='0.0.9',
+      version='3.0',
       packages=setuptools.find_packages(),
       # note that we need to explicitly list the .so file so it gets copied
       package_data={'': ['test/*', 'data/*', 'data/promoters/*', 'data/blacklisted/*',

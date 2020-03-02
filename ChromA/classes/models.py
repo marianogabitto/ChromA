@@ -1,6 +1,6 @@
 from ..util.HMM import message_passing_multi, message_passing_posterior_state, message_passing_incremental
 from ..util.ParamStorage import ParamStorage
-from ..classes import data_handle, states
+from ..classes import data_handle
 
 import multiprocessing
 import numpy as np
@@ -8,17 +8,6 @@ import logging
 import copy
 import ray
 import os
-
-import matplotlib
-gui_env = ['TKAgg', 'Agg', 'GTKAgg', 'Qt4Agg', 'WXAgg']
-for gui in gui_env:
-    try:
-        matplotlib.use(gui, warn=False, force=True)
-        from matplotlib import pyplot as plt
-        break
-    except:
-        continue
-from matplotlib.backends.backend_pdf import PdfPages
 
 
 class BayesianHsmmExperimentMultiProcessing:
