@@ -15,7 +15,6 @@ class BayesianHsmmExperimentMultiProcessing:
                  blacklisted=True, save=False, top_states=None, compute_regions=False, datatype='atac'):
 
         self.logger = logging.getLogger()
-        self.species = None
         self.datatype = datatype
 
         # Data Containers, can be None and updated during Runtime
@@ -75,7 +74,7 @@ class BayesianHsmmExperimentMultiProcessing:
         self.posterior.setField('tmat', tmat_prior, dims=('K', 'K'))
         self.posterior.setField('pi', pi_prior, dims='K')
 
-    def train(self, filename, iterations, species=None, single_chr=None, opt="mo"):
+    def train(self, filename, iterations, species=None, speciesfile=None, single_chr=None, opt="mo"):
 
         # ######################################################################################################
         # Get Logger Info
@@ -105,7 +104,7 @@ class BayesianHsmmExperimentMultiProcessing:
         # Running Regions
         self.logger.info("Training on Regions")
         results = []
-        chromosome = [Trainer.remote(-1, filename, species, self.blacklisted, self.states, self.prior,
+        chromosome = [Trainer.remote(-1, filename, species, speciesfile, self.blacklisted, self.states, self.prior,
                                      self.top_states, logger=logging.getLogger().getEffectiveLevel(),
                                      log_file=name, datatype=self.datatype)]
         results.append(chromosome[0].train.remote(iterations=iterations, msg="Th17 Regions: "))
@@ -138,14 +137,14 @@ class BayesianHsmmExperimentMultiProcessing:
                 self.states[i_].prior = self.states[i_].posterior
 
             # Prune chromosomes
-            self.species = species
-            chr_list = data_handle.validate_chr(filename, species, chr_list=single_chr)
+            chr_list = data_handle.validate_chr(filename, species, speciesfile, chr_list=single_chr)
 
             # Run Training in parallel
             while len(chr_list) > 0:
                 results = []
                 chromosome = []
-                for i_ in np.arange(np.min([processors, len(chr_list)])):
+                num_task = np.min([processors, len(chr_list)])
+                for i_ in np.arange(num_task):
                     chr_ = chr_list[0]
                     self.logger.info("chr{}: Submitting job to Queue".format(chr_))
                     chromosome.append(Trainer.remote(chr_, filename, species, self.blacklisted, self.states, self.prior,
@@ -155,20 +154,10 @@ class BayesianHsmmExperimentMultiProcessing:
                     results.append(chromosome[i_].train.remote(iterations=iterations, msg="chr{}: ".format(chr_)))
                     chr_list.remove(chr_)
 
-                # Collect Results
-                """
-                while len(results) > 0:
-                    ready, _ = ray.wait(results,timeout=1.0)
-                    if len(ready) > 0:
-                        for r_ in ready:
-                            res, _ = ray.get(r_)
-                            results.remove(r_)
-                            for l_ in np.arange(len(res[0])):
-                                self.annotations.append(res[0][l_])
-                                self.annotations_chr.append(res[1][l_])
-                                self.annotations_start.append(res[2][l_])
-                                self.annotations_length.append(res[3][l_])
-                """
+                unfinished = list(np.arange(num_task))
+                while len(unfinished) > 0:
+                    finished, unfinished = ray.wait(unfinished)
+
                 for r_ in reversed(results):
                     res, _ = ray.get(r_)
                     for l_ in np.arange(len(res[0])):
@@ -176,6 +165,8 @@ class BayesianHsmmExperimentMultiProcessing:
                         self.annotations_chr.append(res[1][l_])
                         self.annotations_start.append(res[2][l_])
                         self.annotations_length.append(res[3][l_])
+        # Clean Ray
+        ray.shutdown()
 
     def save_bedfile(self, path, name=None, thres=0.05, ext=100, merge=500, filterpeaks=0):
         # Format Filename
@@ -259,7 +250,7 @@ class BayesianHsmmExperimentMultiProcessing:
 
 @ray.remote(num_cpus=1)
 class Trainer(object):
-    def __init__(self, chr_, filename, species, blacklisted, states, prior,
+    def __init__(self, chr_, filename, species, speciesfile, blacklisted, states, prior,
                  top_states=None, pi=None, tmat=None, logger=None, log_file=None, datatype='atac'):
         # Init Logging Module
         if logger is None:
@@ -303,7 +294,7 @@ class Trainer(object):
             chrom_str = "chr" + chr_.__str__()
             self.logger.info(chrom_str + ": Fetching Data")
             data, length, start, chrom = data_handle.regions_chr(filename=filename, chromosome=chrom_str,
-                                                                 species=species,
+                                                                 species=species, specfile=speciesfile,
                                                                  blacklisted=blacklisted, dnase=dnase)
 
         self.data = data

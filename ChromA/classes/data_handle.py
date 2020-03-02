@@ -65,7 +65,7 @@ def ciona_lens():
     return lens
 
 
-def species_chromosomes(species):
+def species_chromosomes(species, file=None):
 
     if species == 'mouse':
         chrom_length = mouse_lens()
@@ -75,6 +75,16 @@ def species_chromosomes(species):
         chrom_length = fly_lens()
     elif species == 'ciona':
         chrom_length = ciona_lens()
+    elif species == 'new':
+        if file is None:
+            logging.error("File parameter cannot be empty with new species.")
+            raise SystemExit
+        else:
+            chrom_length = dict()
+            with open(file, 'r') as f:
+                reader = csv.reader(f, delimiter='\t')
+                for row in reader:
+                    chrom_length[row[0]] = row[1]
     else:
         logging.error("ERROR: Wrong Species. {}".format(species))
         raise SystemExit
@@ -228,9 +238,9 @@ def validate_inputs(files=None):
     return
 
 
-def validate_chr(filenames, spec, chr_list=None):
+def validate_chr(filenames, spec, specfile=None, chr_list=None):
 
-    chrom_length = species_chromosomes(spec)
+    chrom_length = species_chromosomes(spec, specfile)
     if chr_list is None:
         chrom_list = list(chrom_length.keys())
     else:
@@ -269,37 +279,39 @@ def regions_th17(filename=None, species='mouse', dnase=False):
         logger.error('File Not Found.')
         raise SystemExit
 
-    regions_list = species_regions(species)
+    if species is not 'new':
+        regions_list = species_regions(species)
+        if len(regions_list) > 0:
+            logger.info("Obtaining Curated Regions")
+            obs_vec = []
+            length = []
+            start_l = []
+            chrom_l = []
+            for l_ in np.arange(len(regions_list)):
 
-    if len(regions_list) > 0:
-        logger.info("Obtaining Curated Regions")
-        obs_vec = []
-        length = []
-        start_l = []
-        chrom_l = []
-        for l_ in np.arange(len(regions_list)):
+                chrom = regions_list[l_][0]
+                start = regions_list[l_][1]
+                end = regions_list[l_][2]
 
-            chrom = regions_list[l_][0]
-            start = regions_list[l_][1]
-            end = regions_list[l_][2]
+                obs_vec.append(chr_reads(filename, chrom, start, end, dnase=dnase))
+                length.append(end - start)
+                start_l.append(start)
+                chrom_l.append(chrom)
 
-            obs_vec.append(chr_reads(filename, chrom, start, end, dnase=dnase))
-            length.append(end - start)
-            start_l.append(start)
-            chrom_l.append(chrom)
-
-        logger.info("Computing Observations")
-        out_data = np.concatenate(obs_vec)
+            logger.info("Computing Observations")
+            out_data = np.concatenate(obs_vec)
+        else:
+            out_data, length, start_l, chrom_l = [], [], [], []
     else:
         out_data, length, start_l, chrom_l = [], [], [], []
 
     return out_data, length, start_l, chrom_l
 
 
-def regions_chr(filename=None, chromosome=None, species='mouse', blacklisted=True, dnase=False):
+def regions_chr(filename=None, chromosome=None, species='mouse', specfile=None, blacklisted=True, dnase=False):
 
     logger = logging.getLogger()
-    chrom_lens = species_chromosomes(species)
+    chrom_lens = species_chromosomes(species, specfile)
 
     # Validate Chromosome Name
     if chromosome is None:
@@ -818,14 +830,15 @@ def metrics(filename, annotations=None, species=None):
     logger.info("DATASET METRICS.")
 
     # Compute Metrics
-    for f_ in filename:
-        logger.info("File:{}".format(f_))
-
-        # FRIP
-        if annotations is None:
-            logger.info("Run ChromA to compute FRIP.")
-        else:
-            if (species is not None) and (species is not "new"):
+    logger.info("DATASET METRICS.")
+    if (species is None) or (species is "new"):
+        logger.info("Cannot Compute metrics with {} species".format(species))
+    else:
+        for f_ in filename:
+            logger.info("File:{}".format(f_))
+            if annotations is None:
+                logger.info("Run ChromA to compute metrics.")
+            else:
                 frip_calc, sn, ins_size, number_r = frip_sn(annotations, species, [f_])
                 logger.info("FRIP: {0:3.3f}".format(frip_calc))
                 logger.info("Signal To Noise: {0:3.3f}".format(sn))
