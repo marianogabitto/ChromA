@@ -5,7 +5,6 @@ import multiprocessing
 import seaborn as sns
 import numpy as np
 import logging
-import pickle
 import pysam
 import copy
 import ray
@@ -582,7 +581,8 @@ def get_chunks(cov, chro, region_size=200000):
                 chunk_type[2] += 1
 
         # Last Chunk
-        chunks.append([start, chr_end])
+        if start < chr_end:
+            chunks.append([start, chr_end])
         chunks.sort()
 
         if logging.getLogger().getEffectiveLevel() == 10:
