@@ -193,8 +193,8 @@ class BayesianHsmmExperimentMultiProcessing:
                                 pi=posterior.pi, tmat=posterior.tmat, logger=logging.getLogger().getEffectiveLevel(),
                                 log_file=name, datatype=self.datatype)
                     results = c.train(iterations=iterations, msg="chr{}: ".format(chr_))
-                    chr_list.remove(chr_)
                     """
+                    chr_list.remove(chr_)
 
                 # Collect Results
                 unfinished = list(np.arange(num_task))
