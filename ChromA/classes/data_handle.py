@@ -224,8 +224,12 @@ def validate_inputs(files=None):
                 pyfile = pysam.AlignmentFile(f_)
                 _ = pyfile.header
             except:
-                logging.error("ERROR:Could not read file as BAM format. {}".format(f_))
-                raise SystemExit
+                try:
+                    pyfile = pysam.TabixFile(f_)
+                    _ = pyfile.header
+                except:
+                    logging.error("ERROR:Could not read file as BAM format. {}".format(f_))
+                    raise SystemExit
 
         # TRY TO VALIDATE AS 3 COLUMNS TSV, BED OR BEDGRAPH FILE
         else:
@@ -691,7 +695,7 @@ def write_bed(filename, data, start=None, end=None, ext=100, merge=500, filterpe
 
     with open(filename, 'w') as f:
         for i in np.arange(chrom.shape[0]):
-            f.write("chr" + str(chrom[i]) + "\t" + str(int(start[i])) + "\t" + str(int(end[i])) + "\n")
+            f.write(str(chrom[i]) + "\t" + str(int(start[i])) + "\t" + str(int(end[i])) + "\n")
 
 
 def bed_result(filename, data, start, chrom, threshold=0.5, bedext=100, bedmerge=500, filterpeaks=25):

@@ -146,14 +146,16 @@ class BayesianHsmmExperimentMultiProcessing:
                 num_task = np.min([processors, len(chr_list)])
                 for i_ in np.arange(num_task):
                     chr_ = chr_list[0]
-                    self.logger.info("chr{}: Submitting job to Queue".format(chr_))
-                    chromosome.append(Trainer.remote(chr_, filename, species, self.blacklisted, self.states, self.prior,
-                                                     self.top_states, pi=posterior.pi, tmat=posterior.tmat,
+                    self.logger.info("{}: Submitting job to Queue".format(chr_))
+                    chromosome.append(Trainer.remote(chr_, filename, species, speciesfile, self.blacklisted,
+                                                     self.states, self.prior, self.top_states, pi=posterior.pi,
+                                                     tmat=posterior.tmat,
                                                      logger=logging.getLogger().getEffectiveLevel(), log_file=name,
                                                      datatype=self.datatype))
-                    results.append(chromosome[i_].train.remote(iterations=iterations, msg="chr{}: ".format(chr_)))
+                    results.append(chromosome[i_].train.remote(iterations=iterations, msg="{}: ".format(chr_)))
                     chr_list.remove(chr_)
 
+                """
                 unfinished = results
                 while len(unfinished) > 0:
                     finished, unfinished = ray.wait(unfinished)
@@ -165,6 +167,14 @@ class BayesianHsmmExperimentMultiProcessing:
                             self.annotations_chr.append(res[1][l_])
                             self.annotations_start.append(res[2][l_])
                             self.annotations_length.append(res[3][l_])
+                """
+                for r_ in reversed(results):
+                    res, _ = ray.get(r_)
+                    for l_ in np.arange(len(res[0])):
+                        self.annotations.append(res[0][l_])
+                        self.annotations_chr.append(res[1][l_])
+                        self.annotations_start.append(res[2][l_])
+                        self.annotations_length.append(res[3][l_])
 
         # Clean Ray
         ray.shutdown()
@@ -179,7 +189,7 @@ class BayesianHsmmExperimentMultiProcessing:
         # Format Regions
         chromm = list()
         for i_ in np.arange(len(self.annotations_chr)):
-            chromm.append(self.annotations_chr[i_][3:])
+            chromm.append(self.annotations_chr[i_])
 
         # Save Bed-File All States
         regs = []
@@ -292,7 +302,7 @@ class Trainer(object):
             data, length, start, chrom = data_handle.regions_th17(filename=filename,
                                                                   species=species, dnase=dnase)
         else:
-            chrom_str = "chr" + chr_.__str__()
+            chrom_str = chr_
             self.logger.info(chrom_str + ": Fetching Data")
             data, length, start, chrom = data_handle.regions_chr(filename=filename, chromosome=chrom_str,
                                                                  species=species, specfile=speciesfile,
