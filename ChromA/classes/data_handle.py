@@ -267,7 +267,7 @@ def validate_chr(filenames, spec, specfile=None, chr_list=None):
 
             # CHECK NUMBER OF READS IN CHROMOSOME GREATER THAN 100
             try:
-                chromosome = 'chr' + str(chr_)
+                chromosome = str(chr_)
                 reads = chr_reads([f_], chromosome, 1, int(chrom_length[chromosome]))
                 if np.sum(reads) < 100:
                     chrom_out.remove(chr_)

@@ -130,7 +130,7 @@ class BayesianHsmmExperimentMultiProcessing:
             self.annotations_chr = []
             self.annotations_start = []
             for i_ in np.arange(len(self.states)):
-                if isinstance(type(self.states[0]), type(states[0])):
+                if isinstance(self.states[0], type(states[0])):
                     self.states[i_] = copy.deepcopy(states[i_])
                 else:
                     self.states[i_] = copy.deepcopy(states[0][i_])
@@ -154,17 +154,18 @@ class BayesianHsmmExperimentMultiProcessing:
                     results.append(chromosome[i_].train.remote(iterations=iterations, msg="chr{}: ".format(chr_)))
                     chr_list.remove(chr_)
 
-                unfinished = list(np.arange(num_task))
+                unfinished = results
                 while len(unfinished) > 0:
                     finished, unfinished = ray.wait(unfinished)
 
-                for r_ in reversed(results):
-                    res, _ = ray.get(r_)
-                    for l_ in np.arange(len(res[0])):
-                        self.annotations.append(res[0][l_])
-                        self.annotations_chr.append(res[1][l_])
-                        self.annotations_start.append(res[2][l_])
-                        self.annotations_length.append(res[3][l_])
+                    for r_ in finished:
+                        res, _ = ray.get(r_)
+                        for l_ in np.arange(len(res[0])):
+                            self.annotations.append(res[0][l_])
+                            self.annotations_chr.append(res[1][l_])
+                            self.annotations_start.append(res[2][l_])
+                            self.annotations_length.append(res[3][l_])
+
         # Clean Ray
         ray.shutdown()
 
