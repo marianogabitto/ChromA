@@ -98,7 +98,7 @@ class BayesianHsmmExperimentMultiProcessing:
 
         self.logger.info("Running with {0} processors. Size of Plasma Storage {1}".format(int(processors), memo))
         if not ray.is_initialized():
-            ray.init(num_cpus=int(processors), object_store_memory=memo, include_webui=False)
+            ray.init(num_cpus=int(processors), include_webui=False)
 
         # ######################################################################################################
         # Running Regions

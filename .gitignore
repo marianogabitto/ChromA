@@ -1,6 +1,7 @@
 # PYCHARM FILES
 *.iml
 *.xml
+*.DS_Store
 
 # RESULTS DIRECTORY
 results

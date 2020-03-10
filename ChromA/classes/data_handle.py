@@ -57,10 +57,19 @@ def fly_lens():
 
 
 def ciona_lens():
-    lens = {'chr1': 10041005, 'chr2': 7758925, 'chr3': 6703989, 'chr4': 5505748,
-            'chr5': 5035970, 'chr6': 2365711, 'chr7': 6125209, 'chr8': 6398795,
-            'chr9': 6586237, 'chr10': 4880875, 'chr11': 5152901, 'chr12': 5356124,
-            'chr13': 1792679, 'chr14': 4591987}
+    lens = {'Chr1': 15704606, 'Chr10': 8327059, 'Chr11': 8696443, 'Chr12': 7853492, 'Chr13': 4340075, 'Chr14': 6288713,
+            'Chr2': 9509017, 'Chr3': 11222275, 'Chr4': 7647452, 'Chr5': 7499939, 'Chr6': 4872821, 'Chr7': 8973615,
+            'Chr8': 8275968, 'Chr9': 8318069, 'UAContig48': 29809, 'UAContig24': 49794, 'UAContig20': 53721,
+            'UAContig26': 49264, 'UAContig19': 58221, 'UAContig18': 60964, 'UAContig10': 160731, 'UAContig45': 30295,
+            'UAContig27': 48695, 'UAContig25': 49624, 'UAContig37': 39605, 'UAContig12': 97350, 'UAContig1': 659517,
+            'UAContig2': 455181, 'UAContig17': 61212, 'UAContig40': 34855, 'UAContig3': 422458, 'UAContig6': 302016,
+            'UAContig4': 355599, 'UAContig5': 347316, 'UAContig46': 30287, 'UAContig7': 283060, 'UAContig23': 50243,
+            'UAContig11': 108407, 'UAContig8': 249787, 'UAContig14': 75836, 'UAContig9': 209129, 'UAContig15': 72792,
+            'UAContig31': 43137, 'UAContig33': 41808, 'UAContig13': 87933, 'UAContig51': 26623, 'UAContig42': 32965,
+            'UAContig38': 37619, 'UAContig47': 29906, 'UAContig53': 23448, 'UAContig22': 51644, 'UAContig28': 47875,
+            'UAContig16': 71705, 'UAContig21': 52875, 'UAContig29': 45916, 'UAContig50': 29685, 'UAContig30': 44216,
+            'UAContig41': 33945, 'UAContig44': 30449, 'UAContig39': 34958, 'UAContig43': 31566, 'UAContig34': 41180,
+            'UAContig35': 41037, 'UAContig52': 24109, 'UAContig49': 29720, 'UAContig36': 40050, 'UAContig32': 41919}
 
     return lens
 
@@ -121,10 +130,11 @@ def species_regions(species):
                         ['chr4', 1050000, 1100000],
                         ['chr4', 670000, 720000],
                         ['chr2L', 10215000, 10265000]]
+    elif species == 'ciona':
+        regions_list = [['Chr8', 3360000, 3460000]]
     else:
         logging.info("WARNING: Species {} not found.".format(species))
         regions_list = []
-        quit()
 
     return regions_list
 
@@ -145,7 +155,7 @@ def species_promoters(species):
         reference_chromosome = 'chr1'
     elif species == 'ciona':
         prom = chroma_root + "/data/promoters/prom_ciona_genes.bed"
-        reference_chromosome = 'chr1'
+        reference_chromosome = 'Chr1'
     else:
         prom, reference_chromosome = [], []
 
