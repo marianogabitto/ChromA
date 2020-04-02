@@ -38,13 +38,25 @@ def mouse_lens():
     return lens
 
 
-def human_lens():
+def hg19_lens():
     lens = {'chr1': 249250621, 'chr2': 243199373, 'chr3': 198022430, 'chr4': 191154276, 'chr5': 180915260,
             'chr6': 171115067, 'chr7': 159138663, 'chr8': 146364022, 'chr9': 141213431, 'chr10': 135534747,
             'chr11': 135006516, 'chr12': 133851895, 'chr13': 115169878, 'chr14': 107349540,
             'chr15': 102531392, 'chr16': 90354753, 'chr17': 81195210, 'chr18': 78077248, 'chr19': 59128983,
             'chr20': 63025520, 'chr22': 51304566, 'chr21': 48129895, 'chrX': 155270560, 'chrY': 59373566,
             'chrM': 16571}
+
+    return lens
+
+
+def hg38_lens():
+    lens = {'chr1': 248956422, 'chr2': 242193529, 'chr3': 198295559, 'chr4': 190214555, 'chr5': 181538259,
+            'chr6': 170805979, 'chr7': 159345973, 'chr8': 145138636, 'chr9': 138394717, 'chr10': 133797422,
+            'chr11': 135086622, 'chr12': 133275309, 'chr13': 114364328, 'chr14': 107043718,
+            'chr15': 101991189, 'chr16': 90338345, 'chr17': 83257441, 'chr18': 80373285, 'chr19': 58617616,
+            'chr20': 64444167, 'chr22': 50818468, 'chr21': 46709983, 'chrX': 156040895, 'chrY': 57227415,
+            'chrM': 16569}
+
 
     return lens
 
@@ -78,8 +90,10 @@ def species_chromosomes(species, file=None):
 
     if species == 'mouse':
         chrom_length = mouse_lens()
-    elif species == 'human':
-        chrom_length = human_lens()
+    elif species == 'hg19':
+        chrom_length = hg19_lens()
+    elif species == 'hg38':
+        chrom_length = hg38_lens()
     elif species == 'fly':
         chrom_length = fly_lens()
     elif species == 'ciona':
@@ -113,7 +127,7 @@ def species_regions(species):
                         ['chr5', 32095000, 32190000],
                         ['chr13', 30732000, 30825000],
                         ['chr3', 94303000, 94399000]]
-    elif species == 'human':
+    elif species == 'hg19' or species == 'hg38':
         regions_list = [['chr3', 195750000, 195850000],
                         ['chr16', 67590000, 67691000],
                         ['chr3', 52215600, 52316600],

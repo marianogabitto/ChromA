@@ -44,9 +44,13 @@ def build_states(typ='atac', filename=None, r=None):
             bedopts = BedOptions()
 
     elif typ == "atac":
-        r1 = 3
-        r2 = 2
-        logger.info("Running with 2 States: r={}, r={}".format(r1, r2))
+        if len(filename) > 1:
+            r1 = 3
+            r2 = 2
+        else:
+            r1 = 5
+            r2 = 2
+
         pi_prior = np.array([1000, 1])
         tmat_prior = np.array([[0, 1],
                                [1, 0]])
@@ -67,12 +71,17 @@ def build_states(typ='atac', filename=None, r=None):
             top_states.append(top_closed_state)
             top_states.append(top_open_state)
 
+        logger.info("Running with 2 States: r={}, r={}".format(r1, r2))
         bedopts = BedOptions(thres=0.05, ext=100, merge=500, filterpeaks=0)
 
     elif typ == "dnase":
-        r1 = 3
-        r2 = 2
-        logger.info("Running with 2 States: r={}, r={}".format(r1, r2))
+        if len(filename) > 1:
+            r1 = 3
+            r2 = 2
+        else:
+            r1 = 5
+            r2 = 2
+
         pi_prior = np.array([1000, 1])
         tmat_prior = np.array([[0, 1],
                                [1, 0]])
@@ -93,6 +102,7 @@ def build_states(typ='atac', filename=None, r=None):
             top_states.append(top_closed_state)
             top_states.append(top_open_state)
 
+        logger.info("Running with 2 States: r={}, r={}".format(r1, r2))
         bedopts = BedOptions(thres=0.05, ext=0, merge=500, filterpeaks=75)
 
     else:
