@@ -49,7 +49,7 @@ def build_states(typ='atac', filename=None, r=None):
             r2 = 2
         else:
             r1 = 5
-            r2 = 2
+            r2 = 3
 
         pi_prior = np.array([1000, 1])
         tmat_prior = np.array([[0, 1],
@@ -80,7 +80,7 @@ def build_states(typ='atac', filename=None, r=None):
             r2 = 2
         else:
             r1 = 5
-            r2 = 2
+            r2 = 3
 
         pi_prior = np.array([1000, 1])
         tmat_prior = np.array([[0, 1],

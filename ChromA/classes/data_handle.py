@@ -28,7 +28,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 # ######################################################################
 # VALIDATE AND COMPUTE DATA OBJECTS
-def mouse_lens():
+def mm10_lens():
     lens = {'chr1': 195471971, 'chr2': 182113224, 'chr3': 160039680, 'chr4': 156508116, 'chr5': 151834684,
             'chr6': 149736546, 'chr7': 145441459, 'chr8': 129401213, 'chr9': 124595110, 'chr10': 130694993,
             'chr11': 122082543, 'chr12': 120129022, 'chr13': 120421639, 'chr14': 124902244,
@@ -61,7 +61,7 @@ def hg38_lens():
     return lens
 
 
-def fly_lens():
+def dm6_lens():
     lens = {'chr2L': 23513712, 'chr2R': 25286936, 'chr3L': 28110227, 'chr3R': 32079331,
             'chr4': 1348131, 'chrM': 19524, 'chrX': 23542271, 'chrY': 3667352}
 
@@ -88,14 +88,14 @@ def ciona_lens():
 
 def species_chromosomes(species, file=None):
 
-    if species == 'mouse':
-        chrom_length = mouse_lens()
+    if species == 'mm10':
+        chrom_length = mm10_lens()
     elif species == 'hg19':
         chrom_length = hg19_lens()
     elif species == 'hg38':
         chrom_length = hg38_lens()
-    elif species == 'fly':
-        chrom_length = fly_lens()
+    elif species == 'dm6':
+        chrom_length = dm6_lens()
     elif species == 'ciona':
         chrom_length = ciona_lens()
     elif species == 'new':
@@ -116,7 +116,7 @@ def species_chromosomes(species, file=None):
 
 
 def species_regions(species):
-    if species == 'mouse':
+    if species == 'mm10':
         regions_list = [['chr16', 32580000, 32670000],
                         ['chr8', 105610000, 105705000],
                         ['chr9', 106180000, 106250000],
@@ -138,7 +138,7 @@ def species_regions(species):
                         ['chr2', 28570000, 28670000],
                         ['chr6', 371000, 471000],
                         ['chr3', 128440000, 128540000]]
-    elif species == 'fly':
+    elif species == 'dm6':
         regions_list = [['chr3L', 7329969, 7379929],
                         ['chr3R', 5600000, 5650000],
                         ['chr4', 1050000, 1100000],
@@ -158,14 +158,17 @@ def species_promoters(species):
     chroma_root = os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
     chrom_lens = species_chromosomes(species)
 
-    if species == 'mouse':
+    if species == 'mm10':
         prom = chroma_root + "/data/promoters/prom_mm10_genes.bed"
         reference_chromosome = 'chr1'
-    elif species == 'fly':
+    elif species == 'dm6':
         prom = chroma_root + "/data/promoters/prom_dmel6_genes.bed"
         reference_chromosome = 'chr3R'
-    elif species == 'human':
+    elif species == 'hg19':
         prom = chroma_root + "/data/promoters/prom_hg19_genes.bed"
+        reference_chromosome = 'chr1'
+    elif species == 'hg38':
+        prom = chroma_root + "/data/promoters/prom_hg38_genes.bed"
         reference_chromosome = 'chr1'
     elif species == 'ciona':
         prom = chroma_root + "/data/promoters/prom_ciona_genes.bed"
@@ -300,7 +303,7 @@ def validate_chr(filenames, spec, specfile=None, chr_list=None):
     return chrom_out
 
 
-def regions_th17(filename=None, species='mouse', dnase=False):
+def regions_th17(filename=None, species='mm10', dnase=False):
 
     logger = logging.getLogger()
     if filename is None:
@@ -336,7 +339,7 @@ def regions_th17(filename=None, species='mouse', dnase=False):
     return out_data, length, start_l, chrom_l
 
 
-def regions_chr(filename=None, chromosome=None, species='mouse', specfile=None, blacklisted=True, dnase=False):
+def regions_chr(filename=None, chromosome=None, species='mm10', specfile=None, blacklisted=True, dnase=False):
 
     logger = logging.getLogger()
     chrom_lens = species_chromosomes(species, specfile)
@@ -614,10 +617,12 @@ def count_reads(file, species):
     logger = logging.getLogger()
 
     # Validate Species
-    if species == 'mouse':
-        chrom_lens = mouse_lens()
-    elif species == 'human':
-        chrom_lens = human_lens()
+    if species == 'mm10':
+        chrom_lens = mm10_lens()
+    elif species == 'hg19':
+        chrom_lens = hg19_lens()
+    elif species == 'hg38':
+        chrom_lens = hg38_lens()
     else:
         chrom_lens = []
         logger.error('Wrong species name: mouse/human')
@@ -796,7 +801,7 @@ def preprocess_bedlike(file):
 
 # ######################################################################
 # FILE METRICS
-def frip_sn(annot, spec='mouse', file=None, dnase=False):
+def frip_sn(annot, spec='mm10', file=None, dnase=False):
 
     chrom_lens, prom, reference_chromosome = species_promoters(spec)
     approx_coef = chrom_lens[reference_chromosome] / np.sum(list(chrom_lens.values()))
@@ -858,7 +863,6 @@ def metrics(filename, annotations=None, species=None):
     logger.info("DATASET METRICS.")
 
     # Compute Metrics
-    logger.info("DATASET METRICS.")
     if (species is None) or (species is "new"):
         logger.info("Cannot Compute metrics with {} species".format(species))
     else:
