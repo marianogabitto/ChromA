@@ -57,7 +57,6 @@ def hg38_lens():
             'chr20': 64444167, 'chr22': 50818468, 'chr21': 46709983, 'chrX': 156040895, 'chrY': 57227415,
             'chrM': 16569}
 
-
     return lens
 
 
@@ -245,7 +244,7 @@ def validate_inputs(files=None):
                     pyfile = pysam.TabixFile(f_)
                     _ = pyfile.header
                 except:
-                    logging.error("ERROR:Could not read file as BAM format. {}".format(f_))
+                    logging.error("ERROR:Could not read file as BAM or TABIX format. {}".format(f_))
                     raise SystemExit
 
         # TRY TO VALIDATE AS 3 COLUMNS TSV, BED OR BEDGRAPH FILE
@@ -269,13 +268,11 @@ def validate_inputs(files=None):
     return
 
 
-def validate_chr(filenames, spec, specfile=None, chr_list=None):
+def validate_chr(filenames, spec, specfile=None, chrom_list=None):
 
     chrom_length = species_chromosomes(spec, specfile)
-    if chr_list is None:
+    if chrom_list is None:
         chrom_list = list(chrom_length.keys())
-    else:
-        chrom_list = chr_list
 
     chrom_out = copy.copy(chrom_list)
 
@@ -298,7 +295,7 @@ def validate_chr(filenames, spec, specfile=None, chr_list=None):
                 break
 
     logger = logging.getLogger()
-    logger.info('Running on mouse genome. Chroms:{}'.format(chr_list))
+    logger.info('Running on {} genome. Chroms:{}'.format(spec, chrom_out))
 
     return chrom_out
 
