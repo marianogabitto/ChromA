@@ -98,7 +98,7 @@ class BayesianHsmmExperimentMultiProcessing:
 
         self.logger.info("Running with {0} processors. Size of Plasma Storage {1}".format(int(processors), memo))
         if not ray.is_initialized():
-            ray.init(num_cpus=int(processors), include_webui=False)
+            ray.init(num_cpus=int(processors) - 1, object_store_memory=memo, include_webui=False)
 
         # ######################################################################################################
         # Running Regions
@@ -137,7 +137,7 @@ class BayesianHsmmExperimentMultiProcessing:
                 self.states[i_].prior = self.states[i_].posterior
 
             # Prune chromosomes
-            chr_list = data_handle.validate_chr(filename, species, speciesfile, chr_list=single_chr)
+            chr_list = data_handle.validate_chr(filename, species, speciesfile, chrom_list=single_chr)
 
             # Run Training in parallel
             while len(chr_list) > 0:
