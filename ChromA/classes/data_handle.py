@@ -268,7 +268,12 @@ def validate_inputs(files=None):
     return
 
 
-def validate_chr(filenames, spec, specfile=None, chrom_list=None):
+def validate_chr(filenames, spec, specfile=None, chrom_list=None, datatype='atac'):
+
+    if datatype == 'dnase':
+        dnase = True
+    else:
+        dnase = False
 
     chrom_length = species_chromosomes(spec, specfile)
     if chrom_list is None:
@@ -286,7 +291,7 @@ def validate_chr(filenames, spec, specfile=None, chrom_list=None):
             # CHECK NUMBER OF READS IN CHROMOSOME GREATER THAN 100
             try:
                 chromosome = str(chr_)
-                reads = chr_reads([f_], chromosome, 1, int(chrom_length[chromosome]))
+                reads = chr_reads([f_], chromosome, 1, int(chrom_length[chromosome]), dnase=dnase)
                 if np.sum(reads) < 100:
                     chrom_out.remove(chr_)
                     break
