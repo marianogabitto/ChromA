@@ -411,24 +411,59 @@ def chr_reads(files, chrom, start, end, insert_size=False, dnase=False, map_qual
         # BAM FILE
         if f_[-3:] == 'bam':
             sam_file = pysam.AlignmentFile(f_)
+
+            # Test Single-end versus Paired-end
+            se = 0
+            count = 0.1
+            for read in sam_file.fetch(chrom, start, end):
+                count += 1
+                if not read.is_paired:
+                    se += 1
+
+            if se / count > 0.1:
+                se = True
+                print("BAM File interpreted as single-ended. Paired-end reads recommended for ATAC-seq experiments")
+            else:
+                se = False
+
             for read in sam_file.fetch(chrom, start, end):
                 if dnase is False:
-                    # Assume Reads are Paired-Ended
-                    if not read.is_paired or not read.is_proper_pair or read.mate_is_unmapped \
-                            or read.is_duplicate or read.mapping_quality < map_quality:
-                        continue
+                    # Paired-End
+                    if not se:
+                        if not read.is_paired or not read.is_proper_pair or read.mate_is_unmapped \
+                                or read.is_duplicate or read.mapping_quality < map_quality:
+                            continue
+                        else:
+                            left_tn5_start = min(read.reference_start, read.next_reference_start) + corr_left
+                            right_tn5_end = left_tn5_start + abs(read.template_length) + corr_right
+                            if insert_size:
+                                insert_size_calc.append(np.abs(right_tn5_end - left_tn5_start))
+                                number_reads += 1
+
+                            if (left_tn5_start < end - 1) and (left_tn5_start > start + 1):
+                                out[left_tn5_start - int(start), i_] += 1
+
+                            if (right_tn5_end < end - 1) and (right_tn5_end > start + 1):
+                                out[right_tn5_end - int(start), i_] += 1
+
+                    # Single-End
                     else:
-                        left_tn5_start = min(read.reference_start, read.next_reference_start) + corr_left
-                        right_tn5_end = left_tn5_start + abs(read.template_length) + corr_right
-                        if insert_size:
-                            insert_size_calc.append(np.abs(right_tn5_end - left_tn5_start))
-                            number_reads += 1
+                        if read.is_duplicate or read.mapping_quality < map_quality:
+                            continue
+                        else:
 
-                        if (left_tn5_start < end - 1) and (left_tn5_start > start + 1):
-                            out[left_tn5_start - int(start), i_] += 1
+                            if read.is_reverse:
+                                tn5_bind = read.reference_start  + corr_right
+                            else:
+                                tn5_bind = min(read.reference_start, read.next_reference_start) + corr_left
 
-                        if (right_tn5_end < end - 1) and (right_tn5_end > start + 1):
-                            out[right_tn5_end - int(start), i_] += 1
+                            if insert_size:
+                                insert_size_calc.append(1)
+                                number_reads += 1
+
+                            if (tn5_bind < end - 1) and (tn5_bind > start + 1):
+                                out[tn5_bind - int(start), i_] += 1
+
                 else:
                     # Assume Reads are Single-Ended
                     if read.mapping_quality > map_quality:
@@ -824,7 +859,10 @@ def frip_sn(annot, spec='mm10', file=None, dnase=False):
         if c_[0] == reference_chromosome:
             frip_count += reads[np.int64(c_[1]):np.int64(c_[2])].sum()
 
-    frip_count = frip_count / np.sum(reads)
+    if np.sum(reads) > 0:
+        frip_count = frip_count / np.sum(reads)
+    else:
+        frip_count = 0
 
     # Calculate Signal To Noise
     bed_peaks = read_bed(prom)
@@ -836,7 +874,10 @@ def frip_sn(annot, spec='mm10', file=None, dnase=False):
     idx = read_prom.argmax()
     if idx < 200 or idx > 3800:
         idx = 1000
-    stn = read_prom[idx - 100:idx + 100].sum() / (read_prom[:100] + read_prom[-100:]).sum()
+    if (read_prom[:100] + read_prom[-100:]).sum() > 0:
+        stn = read_prom[idx - 100:idx + 100].sum() / (read_prom[:100] + read_prom[-100:]).sum()
+    else:
+        stn = 0
 
     # Calculate Insert Size Distribution
     ins = np.array(ins)
