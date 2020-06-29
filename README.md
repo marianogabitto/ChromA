@@ -60,13 +60,19 @@ CHECK CHROMA INSTALLATION:  Let's first verify ChromA's correct installation. In
 
 RUNNING CHROMA ON A RESTRICTED CHROMOSOMAL SUBSET:  Next, verify that your file meets the FILE REQUIREMENTS. Once you have proper files, you can run ChromA using:
 
-    ChromA atac  -spec mm10 -i "my.sorted.index.bam" -sb name_output -reg True
+    ChromA atac  -spec mm10 -i "my.sorted.index.bam" -sb output -reg True
 
 RUNNING CHROMA ON THE ENTIRE GENOME: To run ChromA on the entire genome please run:
 
-    ChromA atac  -spec mm10 -i "my.sorted.index.bam" -sb name_output
+    ChromA atac  -spec mm10 -i "my.sorted.index.bam" -sb output
 
 We support the following genomes: mm10 / hg38 / hg19/ dm6. In case you want a new genome being supported, please contact the authors.
+
+# File Requirements
+ChromA supports different file formats:
+* BAM files. BAM files should be indexed and sorted before running ChromA. The corresponding index file (.bai) should be located on the same directory where the bam file is present.
+* TSV files. ChromA supports tab separated files. The files have no header and the four columns are: chrs, start, stop, #duplicates.
+* TSV.GZ files. ChromA supports tab index files (tabix) such as the output of cell ranger. This file tipycally contains the out put of a single-cell experiment. As such, it is a compressed file resulting from a 4-column tab separated no-header file. The four columns are chr, start, stop, #duplicates.  
 
 # Notes
 If running ChromA returns an error in which "libfwdbwdcpp.so" is mentioned, this is due to troubles finding the C++ library that performs calculations. Please refer to our troubleshoot section to overcome this issue.
@@ -96,7 +102,7 @@ The following lines initialize ray without gpus and then run ChromA
 
 >CUDA_VISIBLE_DEVICES=''
 
-> ChromA atac  -spec mm10 -i "my.sorted.index.bam" -sb name_output
+> ChromA atac  -spec mm10 -i "my.sorted.index.bam" -sb output
 
 To run our bash script on the slurm scheduler please run:
 
@@ -105,7 +111,7 @@ To run our bash script on the slurm scheduler please run:
 # CHROMA OUTPUTS:
 ChromA generates 4 files as its output. In general, ChromA minimizes output to the console, logging all the information to different files. After a successful run, you should find the following 4 files:
 
-    ChromA atac  -spec mm10 -i "my.sorted.index.bam" -sb name_output
+    ChromA atac  -spec mm10 -i "my.sorted.index.bam" -sb output
 
 Within the directory where my.sorted.bam resides:
 * my.sorted_insert_size.pdf
