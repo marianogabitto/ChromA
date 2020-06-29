@@ -1,11 +1,13 @@
 # PYCHARM FILES
 *.iml
 *.xml
+*.DS_Store
 
 # RESULTS DIRECTORY
 results
 results/
 results/*
+*.npy
 
 # IDEA Pycharm Omit
 .idea/*

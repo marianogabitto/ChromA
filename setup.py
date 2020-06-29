@@ -12,7 +12,7 @@ extensions = [Extension("libfwdbwdcpp",
 
 setup(
       name='ChromA',
-      version='0.0.9',
+      version='2.1.0',
       packages=setuptools.find_packages(),
       # note that we need to explicitly list the .so file so it gets copied
       package_data={'': ['test/*', 'data/*', 'data/promoters/*', 'data/blacklisted/*',
@@ -26,7 +26,7 @@ setup(
       install_requires=[
                         'matplotlib',
                         'seaborn',
-                        'numpy',
+                        'numpy>=1.16.2',
                         'pysam',
                         'ray',
                         'scipy',
