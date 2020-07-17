@@ -370,13 +370,31 @@ def regions_chr(filename=None, chromosome=None, species='mm10', specfile=None, b
         chrom_l, start_l, length, out_data = reads_from_chunks(chunks, reads, chr_)
         out_data = np.concatenate(out_data)
 
-        if blacklisted:
-            logger.info(chr_ + ": Removing Blacklisted Regions")
-            # Reading List of Blacklisted Regions
+        if blacklisted is "default":
             chroma_root = os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-            bl = read_bed(chroma_root + "/data/blacklisted/mm10.blacklist.bed")
-            # Removing Blacklisted Regions
-            blacklist_reads(out_data, bl, chrom_l, start_l, length)
+
+            if species is "mm10":
+                logger.info(chr_ + ": Removing Default Blacklisted Regions mm10 genome.")
+                bl = read_bed(chroma_root + "/data/blacklisted/mm10.blacklist.bed")
+                blacklist_reads(out_data, bl, chrom_l, start_l, length)
+            elif species is "hg19":
+                logger.info(chr_ + ": Removing Default Blacklisted Regions hg19 genome.")
+                bl = read_bed(chroma_root + "/data/blacklisted/hg19.blacklist.bed")
+                blacklist_reads(out_data, bl, chrom_l, start_l, length)
+            elif species is "hg38":
+                logger.info(chr_ + ": Removing Default Blacklisted Regions hg38 genome.")
+                bl = read_bed(chroma_root + "/data/blacklisted/hg38.blacklist.bed")
+                blacklist_reads(out_data, bl, chrom_l, start_l, length)
+            else:
+                logger.info(chr_ + ": Removing Blacklisted Regions: PASSED. GENOME NOT RECOGNIZED.")
+        else:
+            try:
+                bl = read_bed(blacklisted)
+                if len(bl) > 0:
+                    logger.info(chr_ + ": Removing Blacklisted Regions: {}".format(blacklisted))
+                    blacklist_reads(out_data, bl, chrom_l, start_l, length)
+            except:
+                logger.info(chr_ + ": Removing Blacklisted Regions: ERROR READING BED FILE.")
 
         logger.info(chr_ + ": Data Collected")
     else:

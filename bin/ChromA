@@ -34,8 +34,9 @@ def main(command_line=None):
                               help='Genome Species.(default = mouse, optional)')
     parser_dnase.add_argument('-specfile', '--speciesFile', action='store', dest='specfile', type=str, required=False,
                               default=None, help='If species is new, file with chrom lengths should be entered.')
-    parser_dnase.add_argument('-bl', '--blacklisted', action='store', dest='blacklisted', type=bool, required=False,
-                              default=True, help='Remove Blacklisted peaks. (default is True).')
+    parser_dnase.add_argument('-bl', '--blacklisted', action='store', dest='blacklisted', type=str, required=False,
+                              default="default", help='Remove Blacklisted peaks from default locations (default) or ' +
+                                                      'input "file locations" ')
     parser_dnase.add_argument('-nome', '--no-metrics', action='store', dest='no_metrics', type=bool, required=False,
                               default=False, help='Flag to Compute Metrics. (default is True).')
     parser_dnase.add_argument('-r', '--states', nargs='+', action='store', dest='r', type=float, required=False,
@@ -52,8 +53,9 @@ def main(command_line=None):
                              default=False, help='Parse reads on selected regions (Optional)')
     parser_atac.add_argument('-it', '--iterations', action='store', dest='iterations', type=int, required=False,
                              default=20, help='Number of iterations to fit the algorithm (default = 10, optional)')
-    parser_atac.add_argument('-bl', '--blacklisted', action='store', dest='blacklisted', type=bool, required=False,
-                             default=True, help='Remove Blacklisted peaks. (default is True).')
+    parser_atac.add_argument('-bl', '--blacklisted', action='store', dest='blacklisted', type=str, required=False,
+                             default="default", help='Remove Blacklisted peaks from default locations (default) or ' +
+                             'input "file locations" ')
     parser_atac.add_argument('-nome', '--no-metrics', action='store', dest='no_metrics', type=bool, required=False,
                              default=False, help='Flag to Compute Metrics. (default is True).')
     parser_atac.add_argument('-spec', '--species', action='store', dest='species', type=str, required=False,
