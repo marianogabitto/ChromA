@@ -12,7 +12,7 @@ extensions = [Extension("libfwdbwdcpp",
 
 setup(
       name='ChromA',
-      version='2.1.0',
+      version='2.1.1',
       packages=setuptools.find_packages(),
       # note that we need to explicitly list the .so file so it gets copied
       package_data={'': ['test/*', 'data/*', 'data/promoters/*', 'data/blacklisted/*',

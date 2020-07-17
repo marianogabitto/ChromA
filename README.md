@@ -9,7 +9,7 @@ Publication: https://www.nature.com/articles/s41467-020-14497-5
 # Installation
 The current version of ChromA is implemented in Python 3 and can be installed by running:
 
-    pip install git+https://github.com/marianogabitto/ChromA@v2.1
+    pip install git+https://github.com/marianogabitto/ChromA@v2.1.1
 
 ChromA requires the following packages. In principle, the pip installer should manage their installation but just in case, here is a command that will install all the dependencies.
 

@@ -370,18 +370,19 @@ def regions_chr(filename=None, chromosome=None, species='mm10', specfile=None, b
         chrom_l, start_l, length, out_data = reads_from_chunks(chunks, reads, chr_)
         out_data = np.concatenate(out_data)
 
-        if blacklisted is "default":
+        if blacklisted == "default":
+            logger.info(blacklisted)
             chroma_root = os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-            if species is "mm10":
+            if species == "mm10":
                 logger.info(chr_ + ": Removing Default Blacklisted Regions mm10 genome.")
                 bl = read_bed(chroma_root + "/data/blacklisted/mm10.blacklist.bed")
                 blacklist_reads(out_data, bl, chrom_l, start_l, length)
-            elif species is "hg19":
+            elif species == "hg19":
                 logger.info(chr_ + ": Removing Default Blacklisted Regions hg19 genome.")
                 bl = read_bed(chroma_root + "/data/blacklisted/hg19.blacklist.bed")
                 blacklist_reads(out_data, bl, chrom_l, start_l, length)
-            elif species is "hg38":
+            elif species == "hg38":
                 logger.info(chr_ + ": Removing Default Blacklisted Regions hg38 genome.")
                 bl = read_bed(chroma_root + "/data/blacklisted/hg38.blacklist.bed")
                 blacklist_reads(out_data, bl, chrom_l, start_l, length)
