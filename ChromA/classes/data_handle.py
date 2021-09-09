@@ -7,6 +7,7 @@ import numpy as np
 import logging
 import pysam
 import copy
+import gzip
 import ray
 import csv
 import os
@@ -812,7 +813,11 @@ def bed_result(filename, data, start, chrom, threshold=0.5, bedext=100, bedmerge
         # write bed
         write_bed(filename, data=np.array(chr_l), start=reg_out[:, 0], end=reg_out[:, 1],
                   ext=bedext, merge=bedmerge, filterpeaks=filterpeaks)
-        chr_names = np.core.defchararray.add('chr', np.array(chr_l))
+        chr_l = np.array(chr_l)
+        if chr_l[0][0] != 'c':
+            chr_names = np.core.defchararray.add('chr', chr_l)
+        else:
+            chr_names = chr_l
         peaks = np.concatenate([chr_names[:, None], np.int64(reg_out)], axis=1)
     else:
         print("No regions to write to Bed File.")
@@ -868,6 +873,16 @@ def frip_sn(annot, spec='mm10', file=None, dnase=False):
     elif not os.path.isfile(file[0]):
         return 0, 0
 
+    # Fragment Number
+    def blocks(files, size=65536):
+        while True:
+            b = files.read(size)
+            if not b: break
+            yield b
+
+    with gzip.open(file[0], 'rt') as gzf:
+        nr = sum(bl.count("\n") for bl in blocks(gzf))
+
     # Collect Reads Reference Chromosome
     reads, ins, reads_r = chr_reads(file, reference_chromosome, 1,
                                     chrom_lens[reference_chromosome], insert_size=True, dnase=dnase)
@@ -898,24 +913,27 @@ def frip_sn(annot, spec='mm10', file=None, dnase=False):
     else:
         stn = 0
 
-    # Calculate Insert Size Distribution
-    ins = np.array(ins)
-    ins_calc = (np.sum(ins[(ins < 210) * (ins > 190)]) / (1 + np.sum(ins[(ins < 80) * (ins > 60)])))
-
+    # Calculate Insert Size Distribution and insert size metric
     try:
+        ins = np.array(ins)
+
         fig1 = plt.figure()
-        plt.hist(ins, 300)
+        out = plt.hist(ins, np.arange(0, 800, 10).tolist())
         ax = plt.axis()
-        plt.axis([0, 1000, ax[2], ax[3]])
+        plt.axis([0, 800, ax[2], ax[3]])
         name, _ = os.path.splitext(file[0])
         pp = PdfPages(name + '_insert_size.pdf')
         pp.savefig(fig1)
         pp.close()
+
+        ins_calc = out[0][:10].max() / out[0][10:20].max()
+
     except:
         print("Matplotlib ERROR Generating Insert Size Distribution Plot")
+        ins_calc = 0
         pass
 
-    return frip_count, stn, ins_calc, reads_r / approx_coef
+    return frip_count, stn, ins_calc, nr #reads_r / approx_coef
 
 
 def metrics(filename, annotations=None, species=None):
