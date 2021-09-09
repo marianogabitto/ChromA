@@ -7,3 +7,5 @@ scipy==1.2.0
 seaborn==0.9.0
 setproctitle==1.1.10
 numpy==1.15.4
+pandas
+python==3.6
