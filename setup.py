@@ -12,7 +12,7 @@ extensions = [Extension("libfwdbwdcpp",
 
 setup(
       name='ChromA',
-      version='2.1.2',
+      version='2.2',
       packages=setuptools.find_packages(),
       # note that we need to explicitly list the .so file so it gets copied
       package_data={'': ['test/*', 'data/*', 'data/promoters/*', 'data/blacklisted/*',
@@ -20,19 +20,21 @@ setup(
       url='',
       license='',
       author='Mariano Gabitto',
-      author_email='mgabitto@simonsfoundation.org',
+      author_email='mgabitto@alleninstitute.org',
       description='Chromatin Annotation Tool',
       scripts=['bin/ChromA'],
       install_requires=[
                         'matplotlib',
                         'seaborn',
-                        'numpy>=1.16.2',
+                        'numpy',
                         'pysam',
                         'ray',
                         'scipy',
                         'setproctitle',
                         'psutil',
-                        'nose'
+                        'nose',
+                        'pandas'
+                        'tabix'
                         ],
       ext_modules=extensions,
       test_suite='nose.collector',
