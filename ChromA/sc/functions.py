@@ -1,5 +1,6 @@
 import subprocess
 import anndata
+import pysam
 import csv
 import os
 
@@ -53,20 +54,32 @@ def filter_anndata_barcodes(adata, fragment_slot="fragment_file", barcode_slot="
     # FILTER TSV
     filename = ""
     for i_, l_ in enumerate(libraries):
-        print("Filtering File: {}".format(l_))
         barc = barcodes[i_]
-        print("    with {} barcodes".format(len(barc)))
         if write_single_file:
             filename = name + '.tsv'
         else:
             filename = os.path.split(l_)[1] + "_" + name + '.tsv'
 
-        with open(l_) as f_in:
-            with open(filename, 'a') as f_out:
-                reader = csv.reader(f_in)
-                for row in reader:
+        if os.path.splitext(l_)[1] == ".gz":
+            print("Filtering File as GZ TABIX: {}".format(l_))
+            print("    with {} barcodes".format(len(barc)))
+
+            tabix_file = pysam.TabixFile(l_)
+            for row in tabix_file.fetch():
+                with open(filename, 'a') as f_out:
                     if row[0].split('\t')[3] in barc:
                         f_out.write(row[0] + "\n")
+
+        else:
+            print("Filtering File as CSV Equivalent: {}".format(l_))
+            print("    with {} barcodes".format(len(barc)))
+
+            with open(l_) as f_in:
+                with open(filename, 'a') as f_out:
+                    reader = csv.reader(f_in)
+                    for row in reader:
+                        if row[0].split('\t')[3] in barc:
+                            f_out.write(row[0] + "\n")
 
         if (not write_single_file) and make_tabix:
             process_tabix(filename)
