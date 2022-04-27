@@ -1,5 +1,7 @@
+import multiprocessing
 import subprocess
 import anndata
+import numpy as np
 import pysam
 import csv
 import os
@@ -56,19 +58,22 @@ def filter_anndata_barcodes(adata, fragment_slot="fragment_file", barcode_slot="
     for i_, l_ in enumerate(libraries):
         barc = barcodes[i_]
         if write_single_file:
-            filename = name + '.tsv'
+            filename = name + i_.__str__() + '.tsv'
         else:
-            filename = os.path.split(l_)[1] + "_" + name + '.tsv'
+            filename = os.path.split(l_)[1] + "_" + name + i_.__str__()  + '.tsv'
 
         if os.path.splitext(l_)[1] == ".gz":
             print("Filtering File as GZ TABIX: {}".format(l_))
             print("    with {} barcodes".format(len(barc)))
 
-            tabix_file = pysam.TabixFile(l_)
-            for row in tabix_file.fetch():
-                with open(filename, 'a') as f_out:
+            n_cpu = np.min([16, multiprocessing.cpu_count() - 2])
+            tabix_file = pysam.TabixFile(l_, threads=n_cpu)
+            with open(filename, 'a') as f_out:
+                for j_, row in enumerate(tabix_file.fetch()):
+                    print(j_)
                     if row.split('\t')[3] in barc:
                         f_out.write(row + "\n")
+            tabix_file.close()
 
         else:
             print("Filtering File as CSV Equivalent: {}".format(l_))
