@@ -33,7 +33,7 @@ setup(
                         'setproctitle',
                         'psutil',
                         'nose',
-                        'pandas'
+                        'pandas',
                         'tabix'
                         ],
       ext_modules=extensions,
