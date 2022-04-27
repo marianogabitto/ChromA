@@ -55,10 +55,11 @@ def filter_anndata_barcodes(adata, fragment_slot="fragment_file", barcode_slot="
     for i_, l_ in enumerate(libraries):
         print("Filtering File: {}".format(l_))
         barc = barcodes[i_]
+        print("    with {} barcodes".format(len(barc)))
         if write_single_file:
             filename = name + '.tsv'
         else:
-            filename = l_ + "_" + name + '.tsv'
+            filename = os.path.split(l_)[1] + "_" + name + '.tsv'
 
         with open(l_) as f_in:
             with open(filename, 'a') as f_out:
