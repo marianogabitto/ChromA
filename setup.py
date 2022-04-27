@@ -34,7 +34,7 @@ setup(
                         'psutil',
                         'nose',
                         'pandas',
-                        'tabix'
+                        'pytabix'
                         ],
       ext_modules=extensions,
       test_suite='nose.collector',
