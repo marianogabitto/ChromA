@@ -67,8 +67,8 @@ def filter_anndata_barcodes(adata, fragment_slot="fragment_file", barcode_slot="
             tabix_file = pysam.TabixFile(l_)
             for row in tabix_file.fetch():
                 with open(filename, 'a') as f_out:
-                    if row[0].split('\t')[3] in barc:
-                        f_out.write(row[0] + "\n")
+                    if row.split('\t')[3] in barc:
+                        f_out.write(row + "\n")
 
         else:
             print("Filtering File as CSV Equivalent: {}".format(l_))
