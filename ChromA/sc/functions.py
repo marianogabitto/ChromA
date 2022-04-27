@@ -45,7 +45,7 @@ def filter_anndata_barcodes(adata, fragment_slot="fragment_file", barcode_slot="
         libraries = adata.obs[fragment_slot].unique()
         barcodes = []
         for l_ in libraries:
-            barcodes.append(adata.obs[barcode_slot][adata.obs[fragment_slot].isin(l_)])
+            barcodes.append(adata.obs[barcode_slot][adata.obs[fragment_slot].isin([l_])])
 
         assert len(libraries) == len(barcodes)
         print("Read {} Fragment Files".format(len(libraries)))
