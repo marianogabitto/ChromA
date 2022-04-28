@@ -91,9 +91,9 @@ def filter_anndata_barcodes(adata, fragment_slot="fragment_file", barcode_slot="
             else:
                 working_categories = adata.obs[groupby][adata.obs[fragment_slot].isin([l_])].to_numpy()
             category_mapping.append(dict(zip(working_barcodes, working_categories)))
+            print("Read {} Fragment Files".format(l_))
 
         assert len(libraries) == len(barcodes)
-        print("Read {} Fragment Files".format(len(libraries)))
 
     # FILTER TSV
     filename = ""
