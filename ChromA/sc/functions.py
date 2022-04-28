@@ -106,7 +106,7 @@ def filter_anndata_barcodes(adata, fragment_slot="fragment_file", barcode_slot="
         f_out = {}
         for c_ in categories:
             if write_single_file:
-                filename = name + i_.__str__() + c_.__str__().replace(" ", "").replace("/", "-") + '.tsv'
+                filename = name + c_.__str__().replace(" ", "").replace("/", "-") + '.tsv'
             else:
                 filename = os.path.split(l_)[1] + "_" + name + \
                            i_.__str__() + c_.__str__().replace(" ", "").replace("/", "-") + '.tsv'
