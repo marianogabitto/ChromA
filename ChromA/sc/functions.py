@@ -70,7 +70,8 @@ def filter_anndata_barcodes(adata, fragment_slot="fragment_file", barcode_slot="
             tabix_file = pysam.TabixFile(l_, threads=n_cpu)
             with open(filename, 'a') as f_out:
                 for j_, row in enumerate(tabix_file.fetch()):
-                    print(j_)
+                    if j_ % 1000000 == 0:
+                        print(j_)
                     if row.split('\t')[3] in barc:
                         f_out.write(row + "\n")
             tabix_file.close()
