@@ -50,7 +50,7 @@ def process_tabix(filename=""):
         out_index_fn = "{}.tbi".format(out_bgz_fn)
         print("TABIX File:{}".format(out_index_fn))
         if not os.path.exists(out_index_fn):
-            call(['tabix', out_bgz_fn, '-s 1 -b 2 -e 3'])
+            call(["tabix", out_bgz_fn, "-s", "1", "-b", "2", "-e", "3"])
             if not os.path.exists(out_index_fn) or os.stat(out_index_fn).st_size == 0:
                 raise Exception("Error: Could not create index of bgzip archive")
     except:
@@ -106,10 +106,11 @@ def filter_anndata_barcodes(adata, fragment_slot="fragment_file", barcode_slot="
         f_out = {}
         for c_ in categories:
             if write_single_file:
-                filename = name + i_.__str__() + c_.__str__() + '.tsv'
+                filename = name + i_.__str__() + c_.__str__().replace(" ", "").replace("/", "-") + '.tsv'
             else:
-                filename = os.path.split(l_)[1] + "_" + name + i_.__str__() + c_.__str__() + '.tsv'
-            f_out[c_] = open(filename, 'a')
+                filename = os.path.split(l_)[1] + "_" + name + \
+                           i_.__str__() + c_.__str__().replace(" ", "").replace("/", "-") + '.tsv'
+            f_out[c_] = open(filename, 'a+')
 
         # TODO: TRIVIAL PARALLELIZATION TO SPLIT CALCULATION IN CHROMOSOMES
 
@@ -144,9 +145,16 @@ def filter_anndata_barcodes(adata, fragment_slot="fragment_file", barcode_slot="
                             f_out.write(row[0] + "\n")
 
         if (not write_single_file) and make_tabix:
-            print("Making Tabix File of: {}".format(l_))
-            process_tabix(filename)
+            for c_ in categories:
+                filename = os.path.split(l_)[1] + "_" + name + \
+                           i_.__str__() + c_.__str__().replace(" ", "").replace("/", "-") + '.tsv'
+
+                print("Making Tabix File of: {}".format(filename))
+                process_tabix(filename)
 
     if write_single_file and make_tabix:
-        print("Making Single Tabix File")
-        process_tabix(filename)
+        for c_ in categories:
+            filename = name + c_.__str__().replace(" ", "").replace("/", "-") + '.tsv'
+
+            print("Making Single Tabix File of: {}".format(filename))
+            process_tabix(filename)
