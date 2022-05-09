@@ -3,7 +3,11 @@ import multiprocessing
 import subprocess
 import anndata
 import numpy as np
+from scipy.sparse import coo_matrix, hstack as sp_hstack, csr_matrix
+from scipy.io import mmwrite
 import pysam
+import copy
+import ray
 import csv
 import os
 
@@ -158,3 +162,135 @@ def filter_anndata_barcodes(adata, fragment_slot="fragment_file", barcode_slot="
 
             print("Making Single Tabix File of: {}".format(filename))
             process_tabix(filename)
+
+
+def count_anndata(adata, bed, fragment_slot="fragment_file", barcode_slot="barcodes",
+                  unique_id="libraries", name="counts", return_anndata=False):
+
+    print("Parsing Anndata Object for Barcodes, Unique ID & Fragment Files")
+    # Validate Presence of Slots in Anndata
+    if not ((fragment_slot in adata.obs) and (barcode_slot in adata.obs) and
+            (unique_id in adata.obs)):
+        print("Fragment or Barcode or Unique ID slot not found in adata.obs")
+        return -1
+    else:
+        # Validate LibraryIDs and
+        libraries = adata.obs[fragment_slot].unique()
+        library_ids = adata.obs[unique_id].unique()
+        if not (len(library_ids) == len(libraries)):
+            print("Discordant Libraries Path and IDs")
+            return -1
+
+        barcodes = []
+        for l_ in libraries:
+            working_barcodes = adata.obs[barcode_slot][adata.obs[fragment_slot].isin([l_])].to_numpy()
+            barcodes.append(set(working_barcodes))
+            print("Read barcodes: {}".format(l_))
+
+        assert len(libraries) == len(barcodes)
+
+    # Parse Bed File/List
+    if isinstance(bed, list):
+        print("Parsing Bed Object as List of locations")
+        if len(bed[0]) < 3:
+            print("Bed File contains less than 3 columns")
+            return -1
+        else:
+            interval = bed
+            name_bed = "bedlist"
+            print("Bed File contains {} regions".format(len(interval)))
+    else:
+        print("Parsing Bed Object as file")
+        if not os.path.exists(bed):
+            print("Bed File does not exists")
+            return -1
+        else:
+            interval = list()
+            with open(bed, 'r') as f_:
+                reader = csv.reader(f_, delimiter='\t')
+                for row in reader:
+                    if (len(row)) > 0:
+                        interval.append([row[0], int(row[1]), int(row[2])])
+            name_bed = os.path.split(bed)[1]
+            print("Bed File {} contains {} regions".format(name_bed, len(interval)))
+
+    # Setting up containers
+    n_cells = np.sum([len(b_) for b_ in barcodes])
+    barcode_number = dict()
+    count = 0
+    for library_barcodes in barcodes:
+        for b_ in library_barcodes:
+            barcode_number[b_[0]] = count
+            count = count + 1
+    assert count == n_cells
+
+    # Init Ray
+    processors = int(multiprocessing.cpu_count()) - 1
+    if not ray.is_initialized():
+        ray.init(num_cpus=processors)
+
+    # Split Load by Processor
+    splits = int(np.floor(len(interval) / processors))
+    split_interval = [interval[i:i + splits] for i in np.arange(0, len(interval), splits, dtype=int)]
+
+    # Split Calculations
+    results = []
+    for i_ in np.arange(len(split_interval)):
+        results.append(counting_many_tsv.remote(libraries, barcode_number, copy.copy(split_interval[i_])))
+
+    # Collect Results
+    counts = np.zeros((n_cells, 0), dtype=int)
+    # counts = coo_matrix(np.zeros((n_cells, 0), dtype=int))
+    for i_ in np.arange(len(split_interval)):
+        temp = ray.get(results[i_])
+        counts = np.hstack([counts, temp])
+        # temp = coo_matrix(ray.get(results[i_]))
+        # counts = sp_hstack(counts, temp)
+
+    # #############################################################################
+    # Writing Outputs
+    print("Formating Outputs")
+    counts = csr_matrix(counts)
+    print("Outputs")
+    #         Writing Count Matrix
+    mmwrite(os.path.join(name + "_" + name_bed + "_counts.mtx"), counts)
+
+    #         Writing Barcodes
+    f = open(os.path.join(name + "_" + name_bed + "_barcodes.tsv"), "w")
+    for i_, library_barcode in enumerate(barcodes):
+        for b_ in library_barcode:
+            print(b_[0] + "_" + library_ids[i_], end='\n', file=f)
+    f.close()
+
+    #         Writing Bed Peaks
+    f = open(os.path.join(name + "_" + name_bed + "_peaks.bed"), "w")
+    for i, region in enumerate(interval):
+        print(region[0], region[1], region[2], end='\n', sep='\t', file=f)
+    f.close()
+
+    print("Finished Counting")
+
+
+@ray.remote(num_cpus=2)
+def counting_many_tsv(filenames, barcode_num, inte):
+    n_barcodes = np.sum([len(b_) for b_ in barcode_num])
+    temp_counts = np.zeros((n_barcodes, len(inte)), dtype=int)
+
+    for i_, f_ in enumerate(filenames):
+        if not os.path.exists(f_):
+            print("Failed to read bead file")
+            return -1
+        else:
+            sam_file = pysam.TabixFile(f_, threads=2)
+        barcodes = barcode_num[i_]
+
+        for j_, b_ in enumerate(inte):
+            for read in sam_file.fetch(b_[0], b_[1], b_[2]):
+                rows = read.split('\t')
+                if barcode_num.__contains__(rows[3]):
+                    if (int(rows[1]) > int(b_[1])) and (int(rows[1]) < int(b_[2])):
+                        temp_counts[barcodes[rows[3]], j_] += 1
+                    if (int(rows[2]) > int(b_[1])) and (int(rows[2]) < int(b_[2])):
+                        temp_counts[barcodes[rows[3]], j_] += 1
+
+    return temp_counts
