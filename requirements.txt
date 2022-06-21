@@ -6,6 +6,6 @@ ray==0.6.3
 scipy==1.2.0
 seaborn==0.9.0
 setproctitle==1.1.10
-numpy==1.15.4
+numpy==1.22.0
 pandas
 python==3.6
