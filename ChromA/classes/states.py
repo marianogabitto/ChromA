@@ -6,7 +6,7 @@ import numpy as np
 import logging
 
 
-def build_states(typ='atac', filename=None, r=None):
+def build_states(typ='atac', filename=None, r=None, dif=None):
     logger = logging.getLogger()
 
     class BedOptions(object):
@@ -62,9 +62,15 @@ def build_states(typ='atac', filename=None, r=None):
 
         top_states = None
         if len(filename) > 1:
-            top_tmat0 = np.array([[100, 1],
+            if dif is not None:
+                 top_tmat0 = np.array([[1, 100],
+                                  [100, 1],
+                                  [100, 1],
                                   [1, 100]])
-
+            else:
+                top_tmat0 = np.array([[100, 1],
+                                  [1, 100]])
+           
             top_states = list()
             top_closed_state = TopStateNegativeBinomial(r=r1, p=1e-4, toptmat0=top_tmat0, order=0)
             top_open_state = TopStateNegativeBinomial(r=r2, p=1e-4, toptmat0=top_tmat0, order=1)

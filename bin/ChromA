@@ -65,6 +65,8 @@ def main(command_line=None):
                              default=None, help='If species is new, file with chrom lengths should be entered.')
     parser_atac.add_argument('-r', '--states', nargs='+', action='store', dest='r', type=float, required=False,
                              default=None, help='Control State Properties. Order: r1 r2 p1 p2 (default is None).')
+    parser_atac.add_argument('-dif', '--differential', action='store', dest='DA', type=bool, required=False,  
+                             default=False, help='Enable differential mode (Optional)')
     parser_atac.set_defaults(data='atac')
 
     parser_cutrun = subparsers.add_parser('Cutrun', help='Run ChromA for CutRun experiments.')
@@ -162,7 +164,7 @@ def main(command_line=None):
         print("Processing File:{}".format(options.filename[_]))
 
     pi_prior, tmat_prior, state_list, top_states, bedopts = \
-        states.build_states(typ=options.data, filename=options.filename, r=options.r)
+        states.build_states(typ=options.data, filename=options.filename, r=options.r, dif=options.DA)
 
     # #############################################
     # #############################################
