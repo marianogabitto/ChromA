@@ -3,7 +3,7 @@ nose==1.3.7
 psutil
 pysam==0.15.2
 ray==0.6.3
-scipy==1.2.0
+scipy==1.10.0
 seaborn==0.9.0
 setproctitle==1.1.10
 numpy==1.15.4
